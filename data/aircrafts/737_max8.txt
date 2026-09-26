@@ -1,0 +1,38 @@
+AIRCRAFT: Boeing 737-8
+
+Manufacturer:
+Boeing
+
+Family:
+737 MAX
+
+Aircraft Type:
+Single-aisle narrow-body passenger aircraft
+
+Typical Two-Class Seating:
+160-180 passengers
+
+Maximum Seating:
+210 passengers
+
+Range:
+Up to 3,500 nautical miles
+Up to 6,480 km
+
+Maximum Takeoff Weight:
+82,640 kg
+
+Engine:
+CFM International LEAP-1B
+
+Primary Role:
+Short-haul and medium-haul passenger operations
+
+Notable Features:
+LEAP-1B engines
+Advanced technology winglets
+Single-aisle configuration
+Improved operating efficiency
+
+Source:
+Boeing Official 737 MAX Specifications

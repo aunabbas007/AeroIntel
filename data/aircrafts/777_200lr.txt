@@ -1,0 +1,34 @@
+AIRCRAFT: Boeing 777-200LR
+
+Manufacturer:
+Boeing
+
+Family:
+777
+
+Aircraft Type:
+Twin-engine wide-body long-haul passenger aircraft
+
+Primary Role:
+Ultra-long-haul passenger operations
+
+Maximum Range:
+Approximately 8,555 nautical miles
+
+Engine:
+General Electric GE90-110B1
+
+Primary Role:
+Ultra-long-haul international operations
+
+Notable Features:
+Extended range capability
+Twin-engine configuration
+Designed for very long international routes
+
+Representative Airlines:
+Air India
+Qatar Airways
+
+Source:
+Boeing Official 777 Information

@@ -1,0 +1,31 @@
+AIRLINE: Singapore Airlines
+
+Country: Singapore
+
+Hub: Singapore Changi Airport
+
+Aircraft Fleet:
+Airbus A350-900
+Airbus A380-800
+Boeing 777-300ER
+Boeing 787-10
+Boeing 737-8
+
+Passenger Fleet:
+144 aircraft
+
+Fleet Breakdown:
+22 Boeing 777-300ER
+12 Airbus A380
+65 Airbus A350
+26 Boeing 787-10
+19 Boeing 737-8
+
+Reference Date:
+31 December 2025
+
+Fleet Information:
+Singapore Airlines operates a mixed Airbus and Boeing passenger fleet covering short-haul, medium-haul and long-haul operations.
+
+Source:
+Singapore Airlines Official Fleet Information

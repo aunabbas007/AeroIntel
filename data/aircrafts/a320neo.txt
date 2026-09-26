@@ -1,0 +1,39 @@
+AIRCRAFT: Airbus A320neo
+
+Manufacturer:
+Airbus
+
+Family:
+A320 Family
+
+Aircraft Type:
+Single-aisle narrow-body passenger aircraft
+
+Typical Seating:
+150-180 passengers
+
+Maximum Seating:
+194 passengers
+
+Range:
+Up to 3,400 nautical miles
+Up to 6,300 km
+
+Maximum Takeoff Weight:
+79 tonnes
+
+Engine Options:
+CFM International
+Pratt & Whitney
+
+Primary Role:
+Short-haul and medium-haul passenger operations
+
+Notable Features:
+New-generation engines
+Improved fuel efficiency
+Airbus Airspace cabin
+Single-aisle configuration
+
+Source:
+Airbus Official A320neo Specifications

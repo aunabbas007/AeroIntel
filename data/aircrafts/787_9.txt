@@ -1,0 +1,45 @@
+AIRCRAFT: Boeing 787-9 Dreamliner
+
+Manufacturer:
+Boeing
+
+Family:
+787 Dreamliner
+
+Aircraft Type:
+Twin-engine wide-body long-haul passenger aircraft
+
+Typical Two-Class Seating:
+250-325 passengers
+
+Maximum Takeoff Weight:
+259,220 kg
+
+Range:
+Up to 8,300 nautical miles
+Up to 15,370 km
+
+Length:
+62.8 metres
+
+Wingspan:
+60.1 metres
+
+Primary Role:
+Long-haul international passenger operations
+
+Notable Features:
+Composite-intensive airframe
+Long-range capability
+Fuel-efficient design
+Designed to enable nonstop routes
+
+Representative Airlines:
+Air India
+Qatar Airways
+Lufthansa
+Turkish Airlines
+Etihad Airways
+
+Source:
+Boeing Official 787 Specifications

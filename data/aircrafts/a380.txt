@@ -1,0 +1,47 @@
+AIRCRAFT: Airbus A380
+
+Manufacturer:
+Airbus
+
+Aircraft Type:
+Four-engine double-deck wide-body passenger aircraft
+
+Maximum Seating:
+853 passengers
+
+Range:
+Approximately 8,000 nautical miles
+Approximately 14,800 km
+
+Length:
+Approximately 73 metres
+
+Wingspan:
+Nearly 80 metres
+
+Engines:
+Rolls-Royce Trent 900
+Engine Alliance GP7000
+
+Primary Role:
+High-capacity long-haul international operations
+
+Notable Features:
+Full-length double deck
+Largest passenger aircraft ever built
+Four-engine configuration
+Designed for high-demand long-haul routes
+
+Production Status:
+Production has ceased
+
+Representative Airlines:
+Emirates
+British Airways
+Etihad
+Lufthansa
+Qatar Airways
+Singapore Airlines
+
+Source:
+Airbus Official A380 Information

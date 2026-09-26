@@ -1,0 +1,28 @@
+AIRLINE: Lufthansa
+
+Country: Germany
+
+Hubs:
+Frankfurt Airport
+Munich Airport
+
+Aircraft Fleet:
+Airbus A319
+Airbus A320
+Airbus A320neo
+Airbus A321
+Airbus A321neo
+Airbus A350-900
+Airbus A380-800
+Boeing 747-8
+Boeing 787-9 Dreamliner
+
+Fleet Information:
+Lufthansa combines narrow-body Airbus aircraft with long-haul wide-body aircraft including the Airbus A350, Airbus A380, Boeing 747-8 and Boeing 787 Dreamliner.
+
+Primary Aircraft Manufacturers:
+Airbus
+Boeing
+
+Source:
+Lufthansa Official Fleet Information

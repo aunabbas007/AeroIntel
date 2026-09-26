@@ -1,0 +1,32 @@
+AIRLINE: Air India
+
+Country: India
+
+Hub: Delhi and Mumbai
+
+Aircraft Fleet:
+Airbus A319
+Airbus A320
+Airbus A320neo
+Airbus A321
+Airbus A321neo
+Airbus A350-900
+Boeing 777-200LR
+Boeing 777-300ER
+Boeing 787-8
+Boeing 787-9
+
+Fleet Information:
+Air India operates both Airbus and Boeing aircraft across domestic and international routes. Its fleet includes narrow-body aircraft for domestic operations and wide-body aircraft for long-haul international services.
+
+Fleet Strength:
+184 aircraft
+
+Fleet Count Date:
+7 May 2026
+
+Note:
+Fleet count excludes Air India Express.
+
+Source:
+Air India Official Fleet Information

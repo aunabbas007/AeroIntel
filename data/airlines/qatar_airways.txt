@@ -1,0 +1,34 @@
+AIRLINE: Qatar Airways
+
+Country: Qatar
+
+Hub: Hamad International Airport
+
+Aircraft Fleet:
+
+Airbus:
+A320-200
+A330-200
+A330-300
+A350-900
+A350-1000
+A380
+
+Boeing:
+787-8
+787-9
+777-200LR
+777-300ER
+
+Fleet Information:
+Qatar Airways operates a mixed Airbus and Boeing fleet supporting global long-haul operations together with Airbus narrow-body aircraft.
+
+Notable Aircraft:
+Airbus A350-900
+Airbus A350-1000
+Airbus A380
+Boeing 777-300ER
+Boeing 787-9
+
+Source:
+Qatar Airways Official Fleet Information

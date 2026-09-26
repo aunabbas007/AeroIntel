@@ -1,0 +1,40 @@
+AIRCRAFT: Boeing 777-300ER
+
+Manufacturer:
+Boeing
+
+Family:
+777
+
+Aircraft Type:
+Twin-engine wide-body long-haul passenger aircraft
+
+Typical Role:
+Long-haul international passenger operations
+
+Maximum Range:
+Approximately 7,370 nautical miles
+
+Engine:
+General Electric GE90-115B
+
+Primary Role:
+High-capacity long-haul operations
+
+Notable Features:
+Large passenger capacity
+Long-range capability
+Twin-engine configuration
+High-capacity wide-body aircraft
+
+Representative Airlines:
+Air India
+Emirates
+Qatar Airways
+Singapore Airlines
+British Airways
+Etihad Airways
+Turkish Airlines
+
+Source:
+Boeing Official 777 Information

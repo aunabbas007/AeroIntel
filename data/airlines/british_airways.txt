@@ -1,0 +1,32 @@
+AIRLINE: British Airways
+
+Country: United Kingdom
+
+Hub:
+London Heathrow Airport
+
+Aircraft Fleet:
+Airbus A319-100
+Airbus A320-200
+Airbus A320neo
+Airbus A321-200
+Airbus A321neo
+Airbus A350-1000
+Airbus A380-800
+Boeing 777-200
+Boeing 777-300
+Boeing 787-8
+Boeing 787-9
+Boeing 787-10
+Embraer 190
+
+Fleet Information:
+British Airways operates a mixed Airbus and Boeing fleet covering short-haul European operations and long-haul international routes.
+
+Primary Aircraft Manufacturers:
+Airbus
+Boeing
+Embraer
+
+Source:
+British Airways Official Fleet Information

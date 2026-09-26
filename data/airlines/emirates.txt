@@ -1,0 +1,30 @@
+AIRLINE: Emirates
+
+Country: United Arab Emirates
+
+Hub: Dubai International Airport
+
+Aircraft Fleet:
+Airbus A380
+Airbus A350
+Boeing 777
+
+Fleet Information:
+Emirates operates a long-haul wide-body fleet centered primarily around the Airbus A380, Airbus A350 and Boeing 777 families.
+
+Fleet Strength:
+277 aircraft
+
+A350 Aircraft:
+19
+
+Fleet Count Date:
+31 March 2026
+
+Major Aircraft:
+Airbus A380
+Airbus A350
+Boeing 777
+
+Source:
+Emirates Official Fleet Information

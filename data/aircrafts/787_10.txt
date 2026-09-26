@@ -1,0 +1,42 @@
+AIRCRAFT: Boeing 787-10 Dreamliner
+
+Manufacturer:
+Boeing
+
+Family:
+787 Dreamliner
+
+Aircraft Type:
+Twin-engine wide-body long-haul passenger aircraft
+
+Typical Two-Class Seating:
+300-375 passengers
+
+Maximum Takeoff Weight:
+260,360 kg
+
+Range:
+Up to 7,500 nautical miles
+Up to 13,890 km
+
+Length:
+68.3 metres
+
+Wingspan:
+60.1 metres
+
+Primary Role:
+High-capacity long-haul passenger operations
+
+Notable Features:
+Longest member of the 787 family
+High passenger capacity
+Composite-intensive airframe
+Fuel-efficient design
+
+Representative Airlines:
+Singapore Airlines
+Etihad Airways
+
+Source:
+Boeing Official 787 Specifications

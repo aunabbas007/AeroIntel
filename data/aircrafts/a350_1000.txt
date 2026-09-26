@@ -1,0 +1,38 @@
+AIRCRAFT: Airbus A350-1000
+
+Manufacturer:
+Airbus
+
+Family:
+A350 Family
+
+Aircraft Type:
+Twin-aisle wide-body passenger aircraft
+
+Typical Three-Class Seating:
+375-400 passengers
+
+Maximum Seating:
+480 passengers
+
+Range:
+Up to 9,100 nautical miles
+Up to 16,850 km
+
+Maximum Takeoff Weight:
+324 tonnes
+
+Engine:
+Rolls-Royce Trent XWB-97
+
+Primary Role:
+High-capacity long-haul passenger operations
+
+Notable Features:
+Largest passenger variant of the A350 family
+Longer fuselage than A350-900
+Higher passenger capacity
+Advanced composite construction
+
+Source:
+Airbus Official A350-1000 Specifications

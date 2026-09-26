@@ -1,0 +1,26 @@
+AIRLINE: Turkish Airlines
+
+Country: Türkiye
+
+Hub:
+Istanbul Airport
+
+Aircraft Fleet:
+Airbus A321-200
+Airbus A321neo
+Airbus A330-200
+Airbus A330-300
+Airbus A350-900
+Boeing 737-900ER
+Boeing 777-300ER
+Boeing 787-9 Dreamliner
+
+Fleet Information:
+Turkish Airlines operates a diverse Airbus and Boeing fleet serving international and domestic routes from Istanbul.
+
+Primary Aircraft Manufacturers:
+Airbus
+Boeing
+
+Source:
+Turkish Airlines Official Fleet Information

@@ -1,0 +1,40 @@
+AIRLINE: Etihad Airways
+
+Country: United Arab Emirates
+
+Hub:
+Abu Dhabi International Airport
+
+Aircraft Fleet:
+Airbus A320
+Airbus A321
+Airbus A321LR
+Airbus A350
+Airbus A380
+Boeing 777-300ER
+Boeing 787-9
+Boeing 787-10
+Boeing 777 Freighter
+
+Operating Fleet:
+128 aircraft
+
+Fleet Breakdown:
+48 Boeing 787
+20 Airbus A320
+15 Airbus A321
+11 Airbus A321LR
+10 Airbus A350
+9 Boeing 777
+7 Airbus A380
+2 Airbus A330
+6 Boeing 777 Freighter
+
+Reference Date:
+28 February 2026
+
+Fleet Information:
+Etihad Airways operates Airbus and Boeing aircraft across its passenger and cargo operations.
+
+Source:
+Etihad Airways Official Fleet Information

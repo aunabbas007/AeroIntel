@@ -1,0 +1,38 @@
+AIRCRAFT: Airbus A350-900
+
+Manufacturer:
+Airbus
+
+Family:
+A350 Family
+
+Aircraft Type:
+Twin-aisle wide-body passenger aircraft
+
+Typical Three-Class Seating:
+332-352 passengers
+
+Maximum Seating:
+440 passengers
+
+Range:
+Up to 8,600 nautical miles
+Up to 15,750 km
+
+Maximum Takeoff Weight:
+283 tonnes
+
+Engine:
+Rolls-Royce Trent XWB-84
+
+Primary Role:
+Long-haul and ultra-long-haul passenger operations
+
+Notable Features:
+Advanced composite construction
+Airbus Airspace cabin
+Long-range capability
+High fuel efficiency
+
+Source:
+Airbus Official A350-900 Specifications
