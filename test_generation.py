@@ -16,7 +16,8 @@ query_embedding = model.encode(question)
 results = search_vectors(
     index,
     query_embedding,
-    top_k=3
+    top_k=3,
+    score_threshold=0.5
 )
 
 

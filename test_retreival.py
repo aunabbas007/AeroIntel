@@ -7,10 +7,13 @@ query="Which aircarft does Emirates operate?"
 
 query_embedding=model.encode(query)
 
-results=search_vectors(index,query_embedding,top_k=3)
+results=search_vectors(index,query_embedding,top_k=3,document_type="airline",entity="emirates")
 
 for match in results["matches"]:
     print(f"Score: {match['score']}")
     print(f"Source: {match['metadata']['source']}")
     print(f"Text: {match['metadata']['text']}")
+    print(f"Type: {match['metadata']['type']}")
+    print(f"Entity ID: {match['metadata']['entity_id']}")
+    print(f"Display Name: {match['metadata']['display_name']}")
     print("-----")

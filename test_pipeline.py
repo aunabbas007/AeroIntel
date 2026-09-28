@@ -1,7 +1,7 @@
 from source.loader import load_documents
 from source.chunking import chunk_text
 from source.embeddings import create_embeddings
-from source.vector_store import create_index, prepare_vectors, upsert_vectors
+from source.vector_store import create_index, prepare_vectors, upsert_vectors,clear_index
 
 
 documents = load_documents()
@@ -17,7 +17,10 @@ for document in documents:
     for chunk in chunks:
         all_chunks.append({
             "source": document["source"],
-            "text": chunk
+            "text": chunk,
+            "type": document["type"],
+            "entity_id": document["entity_id"],
+            "display_name": document["display_name"]
         })
 
 
@@ -29,6 +32,8 @@ embeddings = create_embeddings(all_chunks)
 print(f"Embeddings shape: {embeddings.shape}")
 
 index = create_index("aerointel-v1")
+
+clear_index(index)
 
 vectors = prepare_vectors(all_chunks, embeddings)
 

@@ -1,19 +1,32 @@
 def chunk_text(text, chunk_size=300, overlap=50):
-    """
-    Splits the input text into chunks of specified size with a specified overlap.
+    paragraphs = [
+        paragraph.strip()
+        for paragraph in text.split("\n\n")
+        if paragraph.strip()
+    ]
 
-    Args:
-        text (str): The input text to be chunked.
-        chunk_size (int): The maximum size of each chunk.
-        overlap (int): The number of overlapping characters between chunks.
-
-    Returns:
-        list: A list of text chunks.
-    """
     chunks = []
-    start = 0
-    while start < len(text):
-        end = min(start + chunk_size, len(text))
-        chunks.append(text[start:end])
-        start += chunk_size - overlap
+    current_chunk = []
+    current_size = 0
+
+    for paragraph in paragraphs:
+        paragraph_words = paragraph.split()
+        paragraph_size = len(paragraph_words)
+
+        if current_size + paragraph_size <= chunk_size:
+            current_chunk.extend(paragraph_words)
+            current_size += paragraph_size
+
+        else:
+            if current_chunk:
+                chunks.append(" ".join(current_chunk))
+
+            overlap_words = current_chunk[-overlap:] if overlap else []
+
+            current_chunk = overlap_words + paragraph_words
+            current_size = len(current_chunk)
+
+    if current_chunk:
+        chunks.append(" ".join(current_chunk))
+
     return chunks
