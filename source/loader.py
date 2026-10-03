@@ -1,4 +1,5 @@
 from pathlib import Path
+from langchain_core.documents import Document
 
 
 def load_documents(data_path="data"):
@@ -20,12 +21,15 @@ def load_documents(data_path="data"):
 
         display_name = entity_id.replace("_", " ").title()
 
-        documents.append({
-            "source": str(file_path),
-            "text": text,
-            "type": document_type,
-            "entity_id": entity_id,
-            "display_name": display_name
-        })
+        document= Document(
+            page_content=text,
+            metadata={
+                "source":str(file_path),
+                "type":document_type,
+                "entity_id":entity_id,
+                "display_name":display_name
+            }
+        )
+        documents.append(document)
 
     return documents

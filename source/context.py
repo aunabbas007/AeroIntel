@@ -1,13 +1,5 @@
-def build_context(results):
-    context = []
-
-    for match in results["matches"]:
-        text = match["metadata"]["text"]
-        source = match["metadata"]["source"]
-
-        context.append(
-            f"Source: {source}\n"
-            f"{text}"
-        )
-
-    return "\n\n---\n\n".join(context)
+def format_docs(docs):
+    return "\n\n".join(
+        doc.page_content
+        for doc in docs
+    )

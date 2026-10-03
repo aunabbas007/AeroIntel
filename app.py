@@ -1,36 +1,75 @@
-from source.embeddings import model
-from source.vector_store import create_index, search_vectors
-from source.context import build_context
-from source.generator import generate_answer
+from langchain_core.runnables import RunnablePassthrough
+
+from source.loader import load_documents
+from source.chunking import split_documents
+from source.vector_store import create_vector_store, create_retriever
+from source.context import format_docs
+from source.generator import prompt, llm
 
 
-index = create_index("aerointel-v1")
+# -----------------------------
+# Load documents
+# -----------------------------
+
+documents = load_documents()
 
 
-def ask_aerointel(question):
-    query_embedding = model.encode(question)
+# -----------------------------
+# Split documents
+# -----------------------------
 
-    results = search_vectors(
-        index,
-        query_embedding,
-        top_k=3,
-        score_threshold=0.5
-    )
+chunks = split_documents(documents)
 
-    context = build_context(results)
 
-    answer = generate_answer(
-        question,
-        context
-    )
+# -----------------------------
+# Create vector store
+# -----------------------------
 
-    return answer
+vector_store = create_vector_store(
+    "aerointel-v2"
+)
 
+
+# -----------------------------
+# Add documents to Pinecone
+# -----------------------------
+
+vector_store.add_documents(chunks)
+
+
+# -----------------------------
+# Create retriever
+# -----------------------------
+
+retriever = create_retriever(
+    vector_store,
+    k=3
+)
+
+
+# -----------------------------
+# Build RAG chain
+# -----------------------------
+
+rag_chain = (
+    {
+        "context": retriever | format_docs,
+        "question": RunnablePassthrough()
+    }
+    | prompt
+    | llm
+)
+
+
+# -----------------------------
+# Ask AeroIntel
+# -----------------------------
 
 if __name__ == "__main__":
+
     question = input("Ask AeroIntel: ")
 
-    answer = ask_aerointel(question)
+    response = rag_chain.invoke(question)
 
     print("\nAeroIntel:")
-    print(answer)
+    print(response.content)
