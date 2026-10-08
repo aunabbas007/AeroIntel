@@ -2,3 +2,12 @@ sentence-transformers
 pinecone
 python-dotenv
 google-genai
+langchain
+langgraph
+langchain-google-genai
+langchain-huggingface
+langchain-pinecone
+langchain-text-splitters
+sentence-transformers
+pinecone
+python-dotenv
