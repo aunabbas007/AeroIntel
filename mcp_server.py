@@ -140,4 +140,6 @@ def search_aviation_knowledge(query: str) -> str:
 
 
 if __name__ == "__main__":
+    print("MCP_MAIN_ENTERED", file=__import__("sys").stderr, flush=True)
     mcp.run()
+    print("MCP_RUN_RETURNED", file=__import__("sys").stderr, flush=True)

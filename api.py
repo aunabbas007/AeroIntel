@@ -21,12 +21,14 @@ from source.auth import get_current_user
 
 from mcp import StdioServerParameters
 from google.adk.agents import LlmAgent
+from google.adk.models import FallbackModel
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.adk.tools.mcp_tool import McpToolset, StdioConnectionParams
 from google.genai import types
 
 load_dotenv()
+
 
 APP_NAME = "aerointel"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -61,14 +63,15 @@ async def lifespan(app: FastAPI):
     global aviation_tools, runner
 
     server_params = StdioServerParameters(
-        command=sys.executable,
-        args=["-u", MCP_SERVER_PATH],
-    )
+    command=sys.executable,
+    args=["-u", MCP_SERVER_PATH],
+    env=os.environ.copy(),
+)
 
     aviation_tools = McpToolset(
         connection_params=StdioConnectionParams(
             server_params=server_params,
-            timeout=60,
+            timeout=180,  # Allow extra time for HuggingFace model to load on cold start
         )
     )
 
@@ -85,7 +88,10 @@ async def lifespan(app: FastAPI):
 
         agent = LlmAgent(
             name="aerointel_agent",
-            model="gemini-3.8-flash",
+            model=FallbackModel(
+            models=[
+            "gemini-3.8-flash",
+            "gemini-3.6-flash",]),
             description="An aviation intelligence assistant.",
             instruction="""
 You are AeroIntel, an aviation intelligence assistant.

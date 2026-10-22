@@ -1,13 +1,35 @@
-sentence-transformers
-pinecone
-python-dotenv
+
+# FastAPI backend
+fastapi
+uvicorn[standard]
+
+# Google ADK and MCP — match your working local versions
+google-adk==2.12.0
+mcp==2.3.0
 google-genai
+
+# LangChain integrations
 langchain
+langchain-core
 langgraph
 langchain-google-genai
 langchain-huggingface
 langchain-pinecone
 langchain-text-splitters
+
+# Embeddings and vector database
 sentence-transformers
 pinecone
+
+# PostgreSQL and database migrations
+sqlalchemy
+psycopg[binary]
+alembic
+
+# Environment configuration and JWT authentication
 python-dotenv
+PyJWT
+
+# API and automated testing
+httpx
+pytest
