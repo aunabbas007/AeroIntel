@@ -34,4 +34,5 @@ jobs:
       - name: Run tests
         env:
           JWT_SECRET_KEY: "ci-test-only-secret-not-for-production"
+          DATABASE_URL: "sqlite:///./ci_test.db"
         run: python -m pytest -q
