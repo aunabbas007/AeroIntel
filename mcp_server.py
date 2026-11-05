@@ -1,12 +1,28 @@
 
 import re
+import sys
 
 from mcp.server.mcpserver import MCPServer
 from source.vector_store import create_vector_store
 
 
 mcp = MCPServer("Aerointel")
-vector_store = create_vector_store("aerointel-v2")
+vector_store = create_vector_store()
+
+
+def format_documents(documents) -> str:
+    formatted = []
+    for document in documents:
+        metadata = document.metadata or {}
+        source = metadata.get("source") or metadata.get("display_name")
+        if source:
+            source = str(source).replace("\\", "/").rsplit("/", 1)[-1]
+            formatted.append(
+                f"[Source: {source}]\n{document.page_content}"
+            )
+        else:
+            formatted.append(document.page_content)
+    return "\n\n".join(formatted)
 
 
 def normalize_name(value: str) -> str:
@@ -89,7 +105,7 @@ def search_entity(name: str, entity_type: str) -> str:
         )
 
         if documents:
-            return documents[0].page_content
+            return format_documents(documents)
 
     # Fallback for names not covered by the alias table.
     documents = vector_store.similarity_search(
@@ -101,7 +117,7 @@ def search_entity(name: str, entity_type: str) -> str:
     if not documents:
         return f"No {entity_type} information found for {name}."
 
-    return "\n\n".join(doc.page_content for doc in documents)
+    return format_documents(documents)
 
 
 @mcp.tool()
@@ -110,7 +126,11 @@ def search_aircraft(aircraft: str) -> str:
     try:
         return search_entity(aircraft, "aircraft")
     except Exception as error:
-        print(f"Aircraft search failed: {error!r}", flush=True)
+        print(
+            f"Aircraft search failed error_type={type(error).__name__}",
+            file=sys.stderr,
+            flush=True,
+        )
         raise
 
 
@@ -120,7 +140,11 @@ def search_airline(airline: str) -> str:
     try:
         return search_entity(airline, "airline")
     except Exception as error:
-        print(f"Airline search failed: {error!r}", flush=True)
+        print(
+            f"Airline search failed error_type={type(error).__name__}",
+            file=sys.stderr,
+            flush=True,
+        )
         raise
 
 
@@ -133,13 +157,17 @@ def search_aviation_knowledge(query: str) -> str:
         if not documents:
             return "No relevant aviation information found."
 
-        return "\n\n".join(doc.page_content for doc in documents)
+        return format_documents(documents)
     except Exception as error:
-        print(f"General aviation search failed: {error!r}", flush=True)
+        print(
+            f"General aviation search failed error_type={type(error).__name__}",
+            file=sys.stderr,
+            flush=True,
+        )
         raise
 
 
 if __name__ == "__main__":
-    print("MCP_MAIN_ENTERED", file=__import__("sys").stderr, flush=True)
+    print("MCP_MAIN_ENTERED", file=sys.stderr, flush=True)
     mcp.run()
-    print("MCP_RUN_RETURNED", file=__import__("sys").stderr, flush=True)
+    print("MCP_RUN_RETURNED", file=sys.stderr, flush=True)

@@ -1,11 +1,13 @@
-from  langchain_google_genai import ChatGoogleGenerativeAI
+import os
+
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 
 load_dotenv()
 
-llm=ChatGoogleGenerativeAI(
-    model="gemini-3.8-flash"
+llm = ChatGoogleGenerativeAI(
+    model=os.getenv("GEMINI_MODEL_PRIMARY", "gemini-3.8-flash")
 )
 
 prompt = ChatPromptTemplate.from_template(

@@ -1,5 +1,8 @@
 
 import anyio
+import os
+import sys
+from pathlib import Path
 
 from dotenv import load_dotenv
 from mcp import Client, StdioServerParameters
@@ -10,8 +13,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 load_dotenv()
 
 server = StdioServerParameters(
-    command=r"C:\AIprojects\AeroIntel\.venv\Scripts\python.exe",
-    args=[r"C:\AIprojects\AeroIntel\mcp_server.py"],
+    command=sys.executable,
+    args=[str(Path(__file__).resolve().with_name("mcp_server.py"))],
 )
 
 
@@ -99,7 +102,7 @@ async def main():
 
         # Configure the language model
         llm = ChatGoogleGenerativeAI(
-            model="gemini-3.8-flash"
+            model=os.getenv("GEMINI_MODEL_PRIMARY", "gemini-3.8-flash")
         )
 
         # Create the agent

@@ -27,7 +27,7 @@ def upgrade() -> None:
     sa.Column('session_id', sa.String(length=100), nullable=False),
     sa.Column('question', sa.Text(), nullable=False),
     sa.Column('answer', sa.Text(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_conversations_id'), 'conversations', ['id'], unique=False)

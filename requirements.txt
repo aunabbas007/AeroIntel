@@ -29,6 +29,8 @@ alembic
 # Environment configuration and JWT authentication
 python-dotenv
 PyJWT
+pwdlib[argon2]>=0.2.1,<1
+python-multipart>=0.0.9,<1
 
 # API and automated testing
 httpx

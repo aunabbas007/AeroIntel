@@ -1,5 +1,6 @@
 
 import os
+import time
 
 from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
@@ -11,36 +12,66 @@ from source.embeddings import embeddings
 load_dotenv()
 
 
-DEFAULT_INDEX_NAME = "aerointel-v2"
+DEFAULT_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "aerointel-v2")
 EMBEDDING_DIMENSION = 384
 
 
-def create_vector_store(index_name=DEFAULT_INDEX_NAME):
-    """Connect to an existing Pinecone index or create it if missing."""
-
+def _pinecone_client() -> Pinecone:
     api_key = os.getenv("PINECONE_API_KEY")
-
     if not api_key:
-        raise ValueError(
-            "PINECONE_API_KEY is missing. Check your .env file."
+        raise ValueError("PINECONE_API_KEY is missing from the environment.")
+    return Pinecone(api_key=api_key)
+
+
+def ensure_vector_index(index_name: str = DEFAULT_INDEX_NAME) -> None:
+    """Create the configured index for the explicit ingestion command."""
+    pc = _pinecone_client()
+    if index_name in pc.list_indexes().names():
+        return
+
+    pc.create_index(
+        name=index_name,
+        dimension=EMBEDDING_DIMENSION,
+        metric="cosine",
+        spec=ServerlessSpec(
+            cloud=os.getenv("PINECONE_CLOUD", "aws"),
+            region=os.getenv("PINECONE_REGION", "us-east-1"),
+        ),
+    )
+
+    timeout = int(os.getenv("PINECONE_INDEX_READY_TIMEOUT", "180"))
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        description = pc.describe_index(index_name)
+        if getattr(getattr(description, "status", None), "ready", False):
+            return
+        time.sleep(2)
+
+    raise TimeoutError(
+        f"Pinecone index '{index_name}' did not become ready in time."
+    )
+
+
+def create_vector_store(index_name: str | None = None):
+    """Connect to an existing, dimension-compatible Pinecone index."""
+    index_name = index_name or DEFAULT_INDEX_NAME
+    pc = _pinecone_client()
+
+    if index_name not in pc.list_indexes().names():
+        raise RuntimeError(
+            f"Pinecone index '{index_name}' does not exist. "
+            "Run the explicit indexing command after configuring the index."
         )
 
-    pc = Pinecone(api_key=api_key)
-
-    existing_indexes = [
-        index["name"] for index in pc.list_indexes()
-    ]
-
-    if index_name not in existing_indexes:
-        pc.create_index(
-            name=index_name,
-            dimension=EMBEDDING_DIMENSION,
-            metric="cosine",
-            spec=ServerlessSpec(
-                cloud="aws",
-                region="us-east-1",
-            ),
+    description = pc.describe_index(index_name)
+    if description.dimension != EMBEDDING_DIMENSION:
+        raise RuntimeError(
+            f"Pinecone index '{index_name}' has dimension "
+            f"{description.dimension}; expected {EMBEDDING_DIMENSION}."
         )
+
+    if not getattr(getattr(description, "status", None), "ready", True):
+        raise RuntimeError(f"Pinecone index '{index_name}' is not ready.")
 
     return PineconeVectorStore(
         index_name=index_name,

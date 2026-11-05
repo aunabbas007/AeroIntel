@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 from source.database import Base
-from source.models import Conversation
+from source.models import Conversation, User
 
 load_dotenv()
 

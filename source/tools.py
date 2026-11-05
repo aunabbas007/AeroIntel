@@ -6,7 +6,7 @@ from langchain.tools import tool
 from source.vector_store import create_vector_store
 
 
-vector_store = create_vector_store("aerointel-v2")
+vector_store = create_vector_store()
 
 
 def normalize_entity_name(value: str) -> str:

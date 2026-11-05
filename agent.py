@@ -1,3 +1,4 @@
+import os
 from typing import TypedDict
 
 from dotenv import load_dotenv
@@ -48,7 +49,7 @@ class State(MessagesState):
 # ============================================================
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-3.8-flash"
+    model=os.getenv("GEMINI_MODEL_PRIMARY", "gemini-3.8-flash")
 )
 
 

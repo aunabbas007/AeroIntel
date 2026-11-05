@@ -2,7 +2,12 @@ from langchain_core.runnables import RunnablePassthrough
 
 from source.loader import load_documents
 from source.chunking import split_documents
-from source.vector_store import create_vector_store, create_retriever
+from source.vector_store import (
+    create_vector_store,
+    create_retriever,
+    ensure_vector_index,
+)
+from source.indexing import stable_document_ids
 from source.context import format_docs
 from source.generator import prompt, llm
 
@@ -25,16 +30,18 @@ chunks = split_documents(documents)
 # Create vector store
 # -----------------------------
 
-vector_store = create_vector_store(
-    "aerointel-v2"
-)
+ensure_vector_index()
+vector_store = create_vector_store()
 
 
 # -----------------------------
 # Add documents to Pinecone
 # -----------------------------
 
-vector_store.add_documents(chunks)
+vector_store.add_documents(
+    chunks,
+    ids=stable_document_ids(chunks),
+)
 
 
 # -----------------------------

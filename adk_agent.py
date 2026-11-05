@@ -50,7 +50,7 @@ aviation_tools = McpToolset(
 
 agent = LlmAgent(
     name="aerointel_agent",
-    model="gemini-3.8-flash",
+    model=os.getenv("GEMINI_MODEL_PRIMARY", "gemini-3.8-flash"),
     description="An aviation intelligence assistant.",
     instruction="""
 You are AeroIntel, an aviation intelligence assistant.

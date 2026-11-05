@@ -1,0 +1,41 @@
+services:
+  api:
+    build:
+      context: .
+    image: aerointel-api:local
+    restart: unless-stopped
+    init: true
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:?Set GOOGLE_API_KEY in .env}
+      PINECONE_API_KEY: ${PINECONE_API_KEY:?Set PINECONE_API_KEY in .env}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+      GEMINI_MODEL_PRIMARY: ${GEMINI_MODEL_PRIMARY:-gemini-3.8-flash}
+      GEMINI_MODEL_FALLBACK: ${GEMINI_MODEL_FALLBACK:-gemini-3.6-flash}
+      PINECONE_INDEX_NAME: ${PINECONE_INDEX_NAME:-aerointel-v2}
+      PINECONE_CLOUD: ${PINECONE_CLOUD:-aws}
+      PINECONE_REGION: ${PINECONE_REGION:-us-east-1}
+      PINECONE_INDEX_READY_TIMEOUT: ${PINECONE_INDEX_READY_TIMEOUT:-180}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "127.0.0.1:${AEROINTEL_HOST_PORT:-8000}:8000"
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).read()"
+      interval: 30s
+      timeout: 5s
+      start_period: 300s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

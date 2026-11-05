@@ -17,6 +17,82 @@ def test_health_endpoint(client):
     assert response.json()["status"] == "healthy"
 
 
+def test_swagger_exposes_password_login_flow(client):
+    schema = client.get("/openapi.json").json()
+    schemes = schema["components"]["securitySchemes"]
+    auth_scheme = next(iter(schemes.values()))
+
+    assert auth_scheme["type"] == "oauth2"
+    assert auth_scheme["flows"]["password"]["tokenUrl"] == "/auth/login"
+
+
+def test_login_returns_access_token_and_token_authenticates(client):
+    from conftest import TEST_EMAIL, TEST_PASSWORD
+
+    response = client.post(
+        "/auth/login",
+        data={"username": TEST_EMAIL, "password": TEST_PASSWORD},
+    )
+
+    assert response.status_code == 200
+    token_data = response.json()
+    assert token_data["token_type"] == "bearer"
+    assert token_data["expires_in"] > 0
+    assert token_data["access_token"]
+
+    current_user = client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {token_data['access_token']}"},
+    )
+    assert current_user.status_code == 200
+    assert current_user.json()["email"] == TEST_EMAIL
+
+
+def test_login_rejects_wrong_password(client):
+    from conftest import TEST_EMAIL
+
+    response = client.post(
+        "/auth/login",
+        data={"username": TEST_EMAIL, "password": "incorrect-password"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Incorrect email or password."
+
+
+def test_token_for_unknown_account_is_rejected(client):
+    from source.auth import create_access_token
+
+    token = create_access_token("unknown-account")
+    response = client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_inactive_account_cannot_use_existing_token(
+    client,
+    test_session_factory,
+):
+    from source.models import User
+
+    with test_session_factory() as db:
+        user = db.get(User, "api_user")
+        user.is_active = False
+        db.commit()
+
+    try:
+        response = client.get("/auth/me")
+        assert response.status_code == 401
+    finally:
+        with test_session_factory() as db:
+            user = db.get(User, "api_user")
+            user.is_active = True
+            db.commit()
+
+
 def test_ask_rejects_empty_question(client):
     response = client.post(
         "/ask",

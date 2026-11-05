@@ -1,12 +1,15 @@
 
 import anyio
 
+import sys
+from pathlib import Path
+
 from mcp import Client, StdioServerParameters
 
 
 server = StdioServerParameters(
-    command=r"C:\AIprojects\AeroIntel\.venv\Scripts\python.exe",
-    args=[r"C:\AIprojects\AeroIntel\mcp_server.py"],
+    command=sys.executable,
+    args=[str(Path(__file__).resolve().with_name("mcp_server.py"))],
 )
 
 

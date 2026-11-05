@@ -1,302 +1,144 @@
-# AeroIntel ✈️
+# AeroIntel
 
-AeroIntel is an aviation intelligence system that uses Retrieval-Augmented Generation (RAG) to answer questions about airlines and aircraft using a curated aviation knowledge base.
+AeroIntel is a FastAPI aviation assistant. It retrieves evidence from a
+Pinecone knowledge base through MCP tools, asks Gemini to write a grounded
+answer, and stores conversation history in PostgreSQL.
 
-The project combines semantic search with a Large Language Model (LLM) to retrieve relevant information before generating an answer.
+## What is included
 
----
+- FastAPI endpoints for health, readiness, login, account creation, questions,
+  and conversation history.
+- Swagger UI login at `/docs`; users sign in with an email and password.
+- Argon2 password hashes and signed, expiring access tokens.
+- Gemini primary and fallback models configured through environment variables.
+- MCP retrieval with source labels, source-grounded answers, and checks for a
+  missing or incompatible Pinecone index.
+- Alembic migrations, Docker Compose for local PostgreSQL, and a non-root
+  production container.
 
-## 🚀 Overview
+## Configuration
 
-AeroIntel was built to understand and implement a RAG pipeline from scratch before introducing higher-level frameworks such as LangChain.
+Copy `.env.example` to `.env` only if `.env` does not already exist. If you
+already have a `.env`, preserve it and add or update the required settings
+without replacing its secret values.
 
-The system currently contains information about:
+Required settings:
 
-- Airlines
-- Aircraft
-- Airline fleets
-- Aircraft specifications
+| Setting | Purpose |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL connection URL. For the local Compose stack, use the `db` hostname shown in `.env.example`. |
+| `JWT_SECRET_KEY` | Private signing key. Use a random value of at least 32 characters. |
+| `GOOGLE_API_KEY` | Gemini API access. |
+| `PINECONE_API_KEY` | Pinecone access. |
 
-Users can ask questions such as:
+Optional settings include `ACCESS_TOKEN_EXPIRE_MINUTES` (default 480),
+`GEMINI_MODEL_PRIMARY`, `GEMINI_MODEL_FALLBACK`, `PINECONE_INDEX_NAME`,
+`PINECONE_CLOUD`, and `PINECONE_REGION`.
 
-- Which aircraft does Emirates operate?
-- What aircraft are in the Air India fleet?
-- Compare the Airbus A350-900 and Boeing 787-9.
-- Which airlines operate the Airbus A380?
+Keep `.env` out of Git, Docker images, logs, and chat. On AWS, supply secrets
+from AWS Secrets Manager or another managed secret store. Do not put API keys,
+JWT signing keys, or database passwords in an image or a source file.
 
----
+## Run locally with Docker
 
-## 🧠 Architecture
+1. Ensure Docker Desktop is running.
+2. Create `.env` from `.env.example` if you do not already have one. Set a
+   unique local PostgreSQL password in both `POSTGRES_PASSWORD` and
+   `DATABASE_URL`, a random JWT signing key, and your Google and Pinecone keys.
+3. Build and start the API and local PostgreSQL service:
 
-```text
-                KNOWLEDGE BASE
-                      │
-                      ▼
-                 Document Loader
-                      │
-                      ▼
-                    Chunking
-                      │
-                      ▼
-                  Embeddings
-                      │
-                      ▼
-                Pinecone Vector DB
-                      │
-                      │
-User Question ────────┘
-       │
-       ▼
- Query Embedding
-       │
-       ▼
- Semantic Retrieval
-       │
-       ▼
- Relevant Context
-       │
-       ▼
-      Gemini
-       │
-       ▼
-    Final Answer
+   ```powershell
+   docker compose -f compose.yaml -f compose.local.yaml up -d --build
+   ```
+
+   The container applies pending database migrations before starting the API.
+   The API is bound to `127.0.0.1:8000`; it is not exposed to other machines.
+4. Create your account once:
+
+   ```powershell
+   docker compose -f compose.yaml -f compose.local.yaml exec api python create_user.py
+   ```
+
+   The password is entered without being echoed and is stored only as an Argon2
+   hash. The command does not print an access token.
+   To reset an existing account from the trusted host, add `--reset-password`
+   to the same command.
+5. Open [http://localhost:8000/docs](http://localhost:8000/docs), select
+   **Authorize**, and enter your email in the username field and your password.
+   Swagger obtains and stores the access token for you. You do not need to
+   generate or paste tokens manually.
+6. Check `GET /health`, then `GET /ready`, then ask a question with `POST /ask`.
+
+The initial MCP startup loads the embedding model and connects to Pinecone, so
+the first start can take several minutes. The health check allows for this.
+
+## Knowledge base setup
+
+The API expects a Pinecone index whose name matches `PINECONE_INDEX_NAME` and
+whose vector dimension is 384. The API fails readiness if the index is missing,
+not ready, or has the wrong dimension; it will not silently create an empty
+index. To create and populate the index deliberately, configure Pinecone and
+run:
+
+```powershell
+python index_v2.py
 ```
-🔄 RAG Pipeline
-1. Document Loading
 
-AeroIntel loads aviation documents stored as .txt files.
-
-data/
-├── airlines/
-└── aircrafts/
-
-Each document is classified using metadata such as:
-
-Document type
-Entity ID
-Display name
-Source
-2. Chunking
-
-Documents are divided into smaller pieces before generating embeddings.
-
-The current implementation uses paragraph-aware chunking with:
-
-Chunk size: 300 words
-Overlap: 50 words
-
-Chunking allows the retrieval system to work with smaller, more relevant pieces of information.
-
-3. Embeddings
-
-AeroIntel uses:
-
-all-MiniLM-L6-v2
-
-from Sentence Transformers.
-
-Each chunk is converted into a 384-dimensional vector.
-
-Text
- ↓
-Embedding Model
- ↓
-384-dimensional vector
-4. Vector Database
-
-The embeddings are stored in:
-
-Pinecone
-
-AeroIntel uses cosine similarity to retrieve semantically relevant information.
-
-The vector metadata contains information such as:
-
-text
-source
-type
-entity_id
-display_name
-5. Semantic Retrieval
-
-When the user asks a question, the question is converted into an embedding.
-
-Pinecone then searches for the most semantically similar chunks.
-
-The system supports:
-
-Top-k retrieval
-Similarity score thresholds
-Metadata filtering
-Entity filtering
-6. Context Construction
-
-The retrieved chunks are combined into a context that is passed to the LLM.
-
-Retrieved Documents
-        ↓
-Context Builder
-        ↓
-Prompt + Context
-7. LLM Generation
-
-AeroIntel uses Google's Gemini model to generate the final response.
-
-The model is instructed to answer using the retrieved context rather than relying on outside knowledge.
-
-🛡️ Grounded Responses
-
-AeroIntel includes a simple grounding mechanism.
-
-If relevant information cannot be retrieved, the system responds:
-
-I don't have enough information in the knowledge base to answer that question.
-
-This prevents the application from confidently answering questions that are outside its knowledge base.
-
-🗂️ Project Structure
-AeroIntel/
-│
-├── data/
-│   ├── airlines/
-│   └── aircrafts/
-│
-├── source/
-│   ├── loader.py
-│   ├── chunking.py
-│   ├── embeddings.py
-│   ├── vector_store.py
-│   ├── context.py
-│   └── generator.py
-│
-├── app.py
-│
-├── requirements.txt
-├── .gitignore
-└── README.md
-source/
-
-Contains the individual components of the RAG pipeline.
-
-File	Purpose
-loader.py	Loads aviation documents
-chunking.py	Splits documents into chunks
-embeddings.py	Generates text embeddings
-vector_store.py	Handles Pinecone operations and retrieval
-context.py	Builds context from retrieved chunks
-generator.py	Generates answers using Gemini
-app.py
-
-The main application entry point.
-
-It connects the retrieval and generation components into one end-to-end pipeline.
-
-⚙️ Installation
-1. Clone the repository
-git clone https://github.com/aunabbas007/AeroIntel.git
-cd AeroIntel
-2. Create a virtual environment
-python -m venv .venv
-
-Activate it on Windows:
-
-.venv\Scripts\Activate.ps1
-3. Install dependencies
-pip install -r requirements.txt
-
-🔐 Environment Variables
-
-Create a .env file in the project root:
-
-PINECONE_API_KEY=your_pinecone_api_key
-GEMINI_API_KEY=your_gemini_api_key
-
-Do not commit .env to GitHub.
-
-▶️ Running AeroIntel
-
-Start the application with:
-
-python app.py
-
-You will then be prompted for a question:
-
-Ask AeroIntel:
-
-Example:
-
-Ask AeroIntel: Which aircraft does Emirates operate?
-
-Example output:
-
-AeroIntel:
-
-Based on the provided context, Emirates operates the following aircraft:
-
-- Airbus A380
-- Airbus A350
-- Boeing 777
-- 
-🧪 Example Queries
-
-Airline query
-Which aircraft does Emirates operate?
-Aircraft query
-What is the Airbus A350-900?
-Comparison
-Compare the Airbus A350-900 and Boeing 787-9.
-Knowledge boundary
-Who won the 2026 World Cup?
-
-If the information is not available in the knowledge base, AeroIntel refuses to answer rather than using external knowledge.
-
-🧰 Technologies
-
-Python
-Sentence Transformers
-Hugging Face
-Pinecone
-Google Gemini
-NumPy
-python-dotenv
-
-🎯 Learning Objectives
-
-This project was built to understand the internal components of a RAG system before using higher-level frameworks.
-
-The project covers:
-
-Document ingestion
-Text chunking
-Embeddings
-Semantic similarity
-Vector databases
-Metadata filtering
-Retrieval
-Context construction
-Prompt construction
-LLM generation
-Grounded generation
-Basic hallucination control
-🔮 Future Development
-
-AeroIntel can be extended with:
-
-LangChain
-Advanced retrieval strategies
-Reranking
-Query rewriting
-Source citations
-RAG evaluation
-LangGraph
-Agentic workflows
-MCP
-FastAPI
-Docker
-Cloud deployment
-
-These features are intentionally outside the current implementation because the goal of this version is to understand the fundamentals of RAG.
-
-👨‍💻 Author
-
-Aun Abbas
+This indexes the aviation text files in `data/`. Run indexing as a one-off
+operation, not as part of API startup.
+
+## AWS deployment
+
+The repository is prepared to build a container, but this project does not
+create AWS resources or change security groups automatically. Keep the existing
+RDS instance private. The RDS security group should allow PostgreSQL only from
+the AeroIntel application security group. Do not expose port 5432 or the
+container's port 8000 to the public internet.
+
+For an EC2 deployment, publish the image to a private ECR repository and run it
+with the production values injected from AWS Secrets Manager. The included
+`compose.yaml` binds port 8000 to loopback, so an administrator can inspect it
+over a restricted SSH tunnel:
+
+```powershell
+ssh -i <private-key-file> -L 8000:127.0.0.1:8000 ec2-user@<instance-address>
+```
+
+Then open `http://localhost:8000/docs` on the administrator's computer. For a
+public application, put an HTTPS load balancer or reverse proxy in front of the
+container. Restrict SSH ingress to administrator IP addresses and allow API
+ingress only through that HTTPS front end. Never broaden security-group access
+to troubleshoot Swagger.
+
+By default, the image runs `alembic upgrade head` before Uvicorn. For a
+multi-instance deployment, run `alembic upgrade head` once as a deployment job,
+then set `RUN_MIGRATIONS=false` on API tasks so instances do not attempt the
+same migration concurrently.
+
+## API endpoints
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Process liveness. |
+| `GET` | `/ready` | Agent, MCP, and database readiness. |
+| `POST` | `/auth/login` | OAuth2 password login used by Swagger. |
+| `GET` | `/auth/me` | Return the authenticated account. |
+| `POST` | `/ask` | Generate and save a grounded answer. Requires login. |
+| `GET` | `/conversations/{session_id}` | Read the signed-in user's conversation history. Requires login. |
+
+Login tokens expire after eight hours by default. Use Swagger's **Authorize**
+button to sign in again when needed; no developer-token script is included.
+
+## Troubleshooting
+
+- `401`: sign in again through Swagger's **Authorize** button.
+- `/ready` returns `503`: check the sanitized container logs for MCP, Pinecone,
+  or database startup failures. `/health` only confirms that the API process is
+  responding.
+- `429`: the Gemini quota or rate limit is exhausted.
+- `503` from `/ask`: an upstream service is unavailable; the configured
+  fallback model is attempted by Google ADK.
+- “Failed to fetch”: confirm the browser is using the same-origin `/docs` page,
+  that `/health` responds, and that the API is reachable through the intended
+  secure route. Swagger and `/ask` do not need permissive CORS middleware when
+  served by the same FastAPI app.

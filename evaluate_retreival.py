@@ -1,8 +1,14 @@
 
+import os
+
+from dotenv import load_dotenv
+
 from source.vector_store import create_vector_store
 
 
-INDEX_NAME = "aerointel-v2"
+load_dotenv()
+
+INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "aerointel-v2")
 K = 3
 
 # Expected entity IDs and factual terms are derived from

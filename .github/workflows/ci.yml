@@ -36,3 +36,11 @@ jobs:
           JWT_SECRET_KEY: "ci-test-only-secret-not-for-production"
           DATABASE_URL: "sqlite:///./ci_test.db"
         run: python -m pytest -q
+
+      - name: Validate database migrations
+        env:
+          DATABASE_URL: "sqlite:///./ci_migrations.db"
+        run: python -m alembic upgrade head
+
+      - name: Build production container
+        run: docker build --tag aerointel-api:ci .
