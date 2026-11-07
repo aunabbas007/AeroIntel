@@ -93,6 +93,7 @@ jobs:
           IMAGE_URI: ${{ steps.image.outputs.image_uri }}
         run: |
           SCRIPT_B64="$(base64 -w 0 deploy/deploy-ec2.sh)"
+          export SCRIPT_B64
           PARAMETERS="$(python -c 'import json,os; print(json.dumps({"commands": ["echo " + os.environ["SCRIPT_B64"] + " | base64 -d | sudo bash -s -- " + os.environ["IMAGE_URI"]]}))')"
           COMMAND_ID="$(aws ssm send-command             --instance-ids "$EC2_INSTANCE_ID"             --document-name "AWS-RunShellScript"             --comment "Deploy AeroIntel image $GITHUB_SHA"             --parameters "$PARAMETERS"             --query 'Command.CommandId'             --output text)"
 
