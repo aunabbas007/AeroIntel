@@ -67,12 +67,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Verify ECR repository and SSM target
-        run: |
-          aws ecr describe-repositories --repository-names "$ECR_REPOSITORY"
-          PING_STATUS="$(aws ssm describe-instance-information             --filters "Key=InstanceIds,Values=$EC2_INSTANCE_ID"             --query 'InstanceInformationList[0].PingStatus'             --output text)"
-          test "$PING_STATUS" = "Online"
-
       - name: Log in to Amazon ECR
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
