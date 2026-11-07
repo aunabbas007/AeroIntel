@@ -83,7 +83,7 @@ cp "$CADDYFILE" "$CADDY_BACKUP"
 sed "s#127.0.0.1:$ACTIVE_PORT#127.0.0.1:$CANDIDATE_PORT#g" \
   "$CADDY_BACKUP" > /etc/caddy/Caddyfile.aerointel-candidate
 
-if ! caddy validate --config /etc/caddy/Caddyfile.aerointel-candidate; then
+if ! caddy validate --config /etc/caddy/Caddyfile.aerointel-candidate --adapter caddyfile; then
   rm -f /etc/caddy/Caddyfile.aerointel-candidate
   docker rm -f "$CANDIDATE" >/dev/null 2>&1 || true
   echo "Caddy validation failed. Existing production route is unchanged."
