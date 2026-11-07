@@ -50,6 +50,9 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
+    concurrency:
+      group: aerointel-production-deploy
+      cancel-in-progress: false
 
     env:
       AWS_REGION: ap-southeast-2
