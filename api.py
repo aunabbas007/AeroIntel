@@ -19,12 +19,14 @@ from google.genai import types
 from mcp import StdioServerParameters
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from source.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     create_access_token,
     get_current_user,
+    hash_password,
     normalize_email,
     valid_email,
     verify_login_password,
@@ -75,6 +77,10 @@ class AskResponse(BaseModel):
     answer: str
     user_id: str
     session_id: str
+
+class RegisterRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+    password: str = Field(min_length=12, max_length=128)
 
 
 class AccessTokenResponse(BaseModel):
@@ -238,6 +244,57 @@ app = FastAPI(
     version="1.2.0",
     lifespan=lifespan,
 )
+
+@app.post(
+    "/auth/register",
+    response_model=AccessTokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Authentication"],
+    summary="Create a new AeroIntel account",
+)
+def register(
+    request: RegisterRequest,
+    db: Session = Depends(get_db),
+):
+    email = normalize_email(request.email)
+
+    if not valid_email(email):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Please provide a valid email address.",
+        )
+
+    existing_user = db.scalar(
+        select(User).where(User.email == email)
+    )
+
+    if existing_user is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists.",
+        )
+
+    user = User(
+        email=email,
+        password_hash=hash_password(request.password),
+    )
+
+    try:
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists.",
+        )
+
+    return AccessTokenResponse(
+        access_token=create_access_token(user.id),
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
 
 
 @app.post(
