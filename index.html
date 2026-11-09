@@ -132,7 +132,7 @@
       height: 100vh;
       pointer-events: none;
       z-index: 1;
-      background-image: 
+      background-image:
         linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
         linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
       background-size: 80px 80px;
@@ -1629,7 +1629,7 @@
     <section class="hero-section" id="overview">
       <div class="site-container">
         <div class="hero-grid">
-          
+
           <!-- Hero Text Content -->
           <div class="hero-content">
             <!-- Badge (320ms entrance) -->
@@ -1669,7 +1669,7 @@
           <!-- Hero 3D Commercial Aircraft Visual -->
           <div class="hero-3d-visual" id="hero-3d-container">
             <canvas id="aircraft-canvas"></canvas>
-            
+
             <!-- Technical HUD Telemetry Overlay -->
             <div class="aircraft-hud-telemetry">
               <div class="hud-row">
@@ -1788,7 +1788,7 @@
 
         <!-- Aircraft Grid -->
         <div class="aircraft-grid" id="aircraft-cards-container">
-          
+
           <!-- Boeing 787-9 -->
           <div class="glass-card aircraft-card reveal-on-scroll" data-category="widebody boeing">
             <div class="aircraft-visual-header">
@@ -2167,7 +2167,7 @@
         </div>
 
         <div class="airlines-grid">
-          
+
           <!-- Emirates -->
           <div class="glass-card airline-card reveal-on-scroll">
             <div>
@@ -2444,7 +2444,7 @@
 
         <div class="pipeline-wrapper">
           <div class="pipeline-grid">
-            
+
             <!-- Step 1 -->
             <div class="glass-card pipeline-step-card reveal-on-scroll">
               <div class="step-badge">01</div>
@@ -2523,7 +2523,7 @@
 
         <div class="tech-stack-container reveal-on-scroll">
           <div class="stack-layers">
-            
+
             <!-- Layer 1: Serving & Ingestion -->
             <div class="stack-layer">
               <div class="layer-heading">
@@ -2695,13 +2695,17 @@
               </div>
               <div class="assistant-details">
                 <h4>AeroIntel Assistant</h4>
-                <span class="assistant-status">RAG Engine Online (Demo Mode)</span>
+                <span class="assistant-status" id="chat-status-indicator">Checking authentication...</span>
               </div>
             </div>
-            <div>
-              <button class="chat-config-btn" onclick="openApiModal()">
+            <div style="display:flex; align-items:center; gap:0.625rem;">
+              <button class="chat-config-btn" type="button" onclick="startNewSession()" title="Start new conversation session">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>New Chat</span>
+              </button>
+              <button class="chat-config-btn" type="button" onclick="openApiModal()" id="chat-auth-action-btn">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                <span>API Settings</span>
+                <span id="chat-auth-button-label">Sign In</span>
               </button>
             </div>
           </div>
@@ -2830,28 +2834,54 @@
     </div>
   </div>
 
-  <!-- MODAL: API CONFIGURATION (Direct FastAPI Connection) -->
+  <!-- MODAL: API CONNECTIVITY & AUTHENTICATION -->
   <div class="modal-overlay" id="api-modal" onclick="closeApiModal(event)">
     <div class="modal-box" onclick="event.stopPropagation()">
       <button class="modal-close-btn" onclick="closeApiModalDirect()">✕</button>
-      <h3 style="font-size:1.375rem; margin-bottom:0.75rem; color:#fff;">AeroIntel API Connectivity</h3>
+      <h3 style="font-size:1.375rem; margin-bottom:0.75rem; color:#fff;">AeroIntel Authentication &amp; Connectivity</h3>
       <p style="font-size:0.875rem; color:var(--text-secondary); margin-bottom:1.5rem; line-height:1.6;">
-        You can connect this interactive interface directly to your running FastAPI backend or test against authentic local simulation.
+        Authenticate with your AeroIntel account to query the live RAG pipeline and maintain persistent conversation sessions.
       </p>
-      
+
+      <!-- API Base URL (Read-only same origin) -->
       <div style="margin-bottom:1.25rem;">
-        <label style="display:block; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent-cyan); margin-bottom:0.5rem;">API Base URL</label>
-        <input type="text" id="api-base-url" value="http://127.0.0.1:8000" style="width:100%; padding:0.75rem 1rem; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:var(--radius-inner); color:#fff; font-family:monospace; font-size:0.875rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+          <label style="font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent-cyan);">API Base URL</label>
+          <button class="btn-glass-pill" style="padding:0.25rem 0.75rem; font-size:0.75rem;" type="button" onclick="testConnection()">Test Connection</button>
+        </div>
+        <input type="text" id="api-base-url" readonly style="width:100%; padding:0.75rem 1rem; background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); border-radius:var(--radius-inner); color:var(--text-secondary); font-family:monospace; font-size:0.875rem; cursor:default;">
       </div>
 
-      <div style="margin-bottom:1.5rem;">
-        <label style="display:block; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent-cyan); margin-bottom:0.5rem;">JWT Bearer Token (Optional if unauthenticated)</label>
-        <input type="password" id="api-jwt-token" placeholder="Paste access_token from /auth/login or Swagger" style="width:100%; padding:0.75rem 1rem; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:var(--radius-inner); color:#fff; font-family:monospace; font-size:0.875rem;">
+      <!-- Authentication Section -->
+      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); border-radius:var(--radius-inner); padding:1.25rem; margin-bottom:1.25rem;">
+        <div style="font-size:0.8125rem; font-weight:600; color:#fff; margin-bottom:1rem; display:flex; align-items:center; justify-content:space-between;">
+          <span>Account Authentication</span>
+          <span id="auth-account-badge" style="font-size:0.6875rem; color:var(--text-tertiary); font-weight:400;">Not Signed In</span>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+          <label style="display:block; font-size:0.75rem; color:var(--text-tertiary); margin-bottom:0.35rem;">Email Address</label>
+          <input type="email" id="auth-email" placeholder="pilot@aerointel.io" autocomplete="email" style="width:100%; padding:0.75rem 1rem; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:var(--radius-inner); color:#fff; font-size:0.875rem; outline:none;">
+        </div>
+
+        <div style="margin-bottom:1rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+            <label style="font-size:0.75rem; color:var(--text-tertiary);">Password</label>
+            <span style="font-size:0.6875rem; color:var(--text-tertiary);">12 to 128 characters</span>
+          </div>
+          <input type="password" id="auth-password" placeholder="••••••••••••••••" autocomplete="current-password" style="width:100%; padding:0.75rem 1rem; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:var(--radius-inner); color:#fff; font-size:0.875rem; outline:none;">
+        </div>
+
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+          <button class="btn-white-pill" style="padding:0.65rem 1.25rem; font-size:0.875rem; flex:1;" type="button" onclick="handleAuth('login')">Sign In</button>
+          <button class="btn-glass-pill" style="padding:0.65rem 1.25rem; font-size:0.875rem; flex:1;" type="button" onclick="handleAuth('register')">Create Account</button>
+          <button class="btn-glass-pill" id="auth-signout-btn" style="padding:0.65rem 1rem; font-size:0.875rem; display:none; border-color:rgba(239,68,68,0.3); color:#ef4444;" type="button" onclick="handleSignOut()">Sign Out</button>
+        </div>
       </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span id="api-status-ping" style="font-size:0.8125rem; color:var(--text-tertiary);">Mode: Smart Local Demonstration</span>
-        <button class="btn-white-pill" style="padding:0.6rem 1.25rem; font-size:0.875rem;" onclick="testAndSaveApiConfig()">Save Configuration</button>
+      <!-- Live Status & Feedback -->
+      <div style="min-height:1.75rem; display:flex; align-items:center;">
+        <span id="api-status-ping" style="font-size:0.8125rem; color:var(--text-tertiary); line-height:1.4;">Status: Ready</span>
       </div>
     </div>
   </div>
@@ -2890,6 +2920,7 @@
        - Footer: 1650ms
        ========================================================================== */
     window.addEventListener('DOMContentLoaded', () => {
+      updateAuthUI();
       // 1. Navigation Entrance (150ms)
       setTimeout(() => {
         const nav = document.getElementById('main-nav');
@@ -2916,7 +2947,7 @@
         const rawText = subtitleEl.innerText.trim();
         const words = rawText.split(/\s+/);
         subtitleEl.innerHTML = words.map(w => `<span class="sub-word-wrap"><span class="sub-word-inner">${w}</span></span>`).join(' ');
-        
+
         const subWords = subtitleEl.querySelectorAll('.sub-word-inner');
         subWords.forEach((wSpan, idx) => {
           setTimeout(() => {
@@ -3551,7 +3582,7 @@
       content.innerHTML = `
         <div style="font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--accent-cyan); margin-bottom:0.25rem;">${data.mfg} // ${data.family}</div>
         <h2 style="font-size:1.75rem; font-weight:500; color:#fff; margin-bottom:1.25rem;">${data.name}</h2>
-        
+
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem; background:rgba(255,255,255,0.02); padding:1.25rem; border-radius:var(--radius-inner); border:1px solid rgba(255,255,255,0.06);">
           <div>
             <div style="font-size:0.75rem; color:var(--text-tertiary);">Category</div>
@@ -3609,108 +3640,403 @@
     }
 
     /* ==========================================================================
-       6. INTERACTIVE CONVERSATIONAL AI & FASTAPI INTEGRATION
-       Offline demonstration answers strictly match the authentic AeroIntel vector store.
+       6. LIVE FASTAPI INTEGRATION & CONVERSATIONAL AI
+       Authentic backend communication, session continuity, and secure rendering.
        ========================================================================== */
-    const authenticKnowledgeAnswers = {
-      'What is the difference between the Boeing 787-9 and 787-10?': {
-        answer: "The primary differences between the **Boeing 787-9** and **787-10 Dreamliner** center on capacity, fuselage dimensions, and operational range:\n\n• **Length & Airframe:** The 787-10 is the longest member of the 787 family at **68.3 metres**, whereas the 787-9 measures **62.8 metres**. Both share the same 60.1-metre wingspan.\n• **Passenger Capacity:** The 787-10 carries **300–375 passengers** in typical two-class layout, compared to **250–325 passengers** for the 787-9.\n• **Range Trade-Off:** The 787-9 offers longer range at up to **8,300 nautical miles (15,370 km)**. The larger 787-10 is optimized for high-capacity long-haul routes with a range of **7,500 nautical miles (13,890 km)**.\n• **MTOW:** 787-10 MTOW is slightly higher at **260,360 kg** versus **259,220 kg** for the 787-9.",
-        citation: "[Source: Boeing Official 787 Specifications]"
+
+    const apiConfig = {
+      get baseUrl() {
+        return window.location.origin;
       },
-      'Compare the Airbus A350-1000 and Boeing 777-300ER.': {
-        answer: "Comparing the **Airbus A350-1000** and **Boeing 777-300ER** across the AeroIntel knowledge base:\n\n• **Range:** The Airbus A350-1000 delivers up to **9,100 nautical miles (16,850 km)** of range, surpassing the 777-300ER's **~7,370 nautical miles (~13,649 km)**.\n• **Passenger Capacity:** The A350-1000 accommodates **375–400 passengers** in standard three-class seating (max 480 passengers), providing direct high-density competition to the 777-300ER.\n• **Powerplants:** The 777-300ER is powered by twin **General Electric GE90-115B** engines. The A350-1000 is powered by **Rolls-Royce Trent XWB-97** turbofans.\n• **Airframe Materials:** The A350-1000 features modern composite construction with the Airbus Airspace cabin, achieving superior fuel burn compared to previous-generation widebodies.",
-        citation: "[Source: Airbus Official Specifications, Boeing Official Specifications]"
+      get token() {
+        return sessionStorage.getItem('aerointel_token') || '';
       },
-      'Which airlines operate the Airbus A380?': {
-        answer: "According to the AeroIntel knowledge base, six of the eight indexed airlines operate or have operated the **Airbus A380**:\n\n1. **Emirates:** The world's largest operator of the A380, operating an extensive global superjumbo network out of Dubai International (DXB).\n2. **Singapore Airlines:** Operates 12 Airbus A380-800 aircraft out of Singapore Changi.\n3. **Etihad Airways:** Operates 7 Airbus A380s in active service from Abu Dhabi.\n4. **British Airways:** Operates Airbus A380-800 on high-density routes out of London Heathrow.\n5. **Lufthansa:** Deploys A380-800 aircraft from Frankfurt and Munich.\n6. **Qatar Airways:** Operates Airbus A380 from Hamad International Airport.\n\n*(Note: Air India and Turkish Airlines do not operate the A380 in our verified database.)*",
-        citation: "[Source: Emirates Official Fleet Information, Airline Knowledge Base]"
+      set token(val) {
+        if (val) {
+          sessionStorage.setItem('aerointel_token', val);
+        } else {
+          sessionStorage.removeItem('aerointel_token');
+        }
       },
-      'Explain the Boeing 737 MAX 8 specifications.': {
-        answer: "The **Boeing 737-8 (737 MAX 8)** is a single-aisle narrow-body passenger aircraft:\n\n• **Manufacturer & Family:** Boeing, 737 MAX\n• **Engines:** CFM International LEAP-1B with advanced technology winglets\n• **Range:** **3,500 nautical miles (6,480 km)**\n• **Typical Seating:** **160–180 passengers** (two-class configuration, maximum 210 passengers)\n• **Maximum Takeoff Weight (MTOW):** **82,640 kg**\n• **Primary Role:** Short-haul and medium-haul passenger operations\n• **AeroIntel Knowledge Base Operators:** Operated by Singapore Airlines (19 aircraft in fleet).",
-        citation: "[Source: Boeing Official Specifications]"
+      get userEmail() {
+        return sessionStorage.getItem('aerointel_email') || '';
+      },
+      set userEmail(val) {
+        if (val) {
+          sessionStorage.setItem('aerointel_email', val);
+        } else {
+          sessionStorage.removeItem('aerointel_email');
+        }
+      },
+      get sessionId() {
+        return sessionStorage.getItem('aerointel_session_id') || '';
+      },
+      set sessionId(val) {
+        if (val) {
+          sessionStorage.setItem('aerointel_session_id', val);
+        } else {
+          sessionStorage.removeItem('aerointel_session_id');
+        }
       }
     };
 
-    let apiConfig = {
-      baseUrl: 'http://127.0.0.1:8000',
-      jwtToken: ''
-    };
+    function updateAuthUI() {
+      const token = apiConfig.token;
+      const email = apiConfig.userEmail;
+      const statusIndicator = document.getElementById('chat-status-indicator');
+      const authBtnLabel = document.getElementById('chat-auth-button-label');
+      const accountBadge = document.getElementById('auth-account-badge');
+      const signoutBtn = document.getElementById('auth-signout-btn');
+      const baseUrlInput = document.getElementById('api-base-url');
+
+      if (baseUrlInput) {
+        baseUrlInput.value = apiConfig.baseUrl;
+      }
+
+      if (token) {
+        if (statusIndicator) {
+          statusIndicator.innerText = email ? `Online (${email})` : 'Online (Authenticated)';
+          statusIndicator.style.color = '#10b981';
+        }
+        if (authBtnLabel) {
+          authBtnLabel.innerText = 'Account';
+        }
+        if (accountBadge) {
+          accountBadge.innerText = email ? `Signed in as ${email}` : 'Signed in';
+          accountBadge.style.color = '#10b981';
+        }
+        if (signoutBtn) {
+          signoutBtn.style.display = 'inline-flex';
+        }
+      } else {
+        if (statusIndicator) {
+          statusIndicator.innerText = 'Authentication Required';
+          statusIndicator.style.color = '#f59e0b';
+        }
+        if (authBtnLabel) {
+          authBtnLabel.innerText = 'Sign In';
+        }
+        if (accountBadge) {
+          accountBadge.innerText = 'Not Signed In';
+          accountBadge.style.color = 'var(--text-tertiary)';
+        }
+        if (signoutBtn) {
+          signoutBtn.style.display = 'none';
+        }
+      }
+    }
+
+    function openApiModal() {
+      const modal = document.getElementById('api-modal');
+      if (modal) {
+        updateAuthUI();
+        modal.classList.add('active');
+      }
+    }
+
+    function closeApiModal(e) {
+      if (e.target && e.target.id === 'api-modal') {
+        closeApiModalDirect();
+      }
+    }
+
+    function closeApiModalDirect() {
+      const modal = document.getElementById('api-modal');
+      if (modal) {
+        modal.classList.remove('active');
+      }
+    }
+
+    async function testConnection() {
+      const statusPing = document.getElementById('api-status-ping');
+      if (statusPing) {
+        statusPing.innerText = 'Checking API health...';
+        statusPing.style.color = 'var(--accent-cyan)';
+      }
+
+      try {
+        const response = await fetch(`${apiConfig.baseUrl}/health`);
+        const data = await response.json();
+        if (response.ok && data.status === 'healthy') {
+          if (statusPing) {
+            statusPing.innerText = `Connected: ${data.app || 'AeroIntel'} API is healthy.`;
+            statusPing.style.color = '#10b981';
+          }
+        } else {
+          if (statusPing) {
+            statusPing.innerText = `Health check returned status ${response.status}.`;
+            statusPing.style.color = '#ef4444';
+          }
+        }
+      } catch (err) {
+        if (statusPing) {
+          statusPing.innerText = 'Failed to connect to API: ' + (err.message || 'Network error');
+          statusPing.style.color = '#ef4444';
+        }
+      }
+    }
+
+    async function handleAuth(action) {
+      const emailInput = document.getElementById('auth-email');
+      const passwordInput = document.getElementById('auth-password');
+      const statusPing = document.getElementById('api-status-ping');
+
+      const email = emailInput ? emailInput.value.trim() : '';
+      const password = passwordInput ? passwordInput.value : '';
+
+      if (!email || !password) {
+        if (statusPing) {
+          statusPing.innerText = 'Please enter both email and password.';
+          statusPing.style.color = '#f59e0b';
+        }
+        return;
+      }
+
+      if (password.length < 12 || password.length > 128) {
+        if (statusPing) {
+          statusPing.innerText = 'Password must be between 12 and 128 characters.';
+          statusPing.style.color = '#f59e0b';
+        }
+        return;
+      }
+
+      if (statusPing) {
+        statusPing.innerText = action === 'login' ? 'Signing in...' : 'Creating account...';
+        statusPing.style.color = 'var(--accent-cyan)';
+      }
+
+      try {
+        let response;
+        if (action === 'login') {
+          const formData = new URLSearchParams();
+          formData.append('username', email);
+          formData.append('password', password);
+
+          response = await fetch(`${apiConfig.baseUrl}/auth/login`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: formData.toString()
+          });
+        } else {
+          response = await fetch(`${apiConfig.baseUrl}/auth/register`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email: email, password: password })
+          });
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          const errorMsg = data.detail || (action === 'login' ? 'Sign in failed.' : 'Registration failed.');
+          if (statusPing) {
+            statusPing.innerText = errorMsg;
+            statusPing.style.color = '#ef4444';
+          }
+          return;
+        }
+
+        apiConfig.token = data.access_token;
+        apiConfig.userEmail = email;
+
+        if (passwordInput) {
+          passwordInput.value = '';
+        }
+
+        if (statusPing) {
+          statusPing.innerText = action === 'login' ? 'Signed in successfully!' : 'Account created & signed in!';
+          statusPing.style.color = '#10b981';
+        }
+
+        updateAuthUI();
+
+        setTimeout(() => {
+          closeApiModalDirect();
+        }, 800);
+
+      } catch (err) {
+        if (statusPing) {
+          statusPing.innerText = 'Authentication error: ' + (err.message || 'Request failed');
+          statusPing.style.color = '#ef4444';
+        }
+      }
+    }
+
+    function handleSignOut() {
+      apiConfig.token = '';
+      apiConfig.userEmail = '';
+      apiConfig.sessionId = '';
+      updateAuthUI();
+
+      const statusPing = document.getElementById('api-status-ping');
+      if (statusPing) {
+        statusPing.innerText = 'Signed out successfully.';
+        statusPing.style.color = 'var(--text-tertiary)';
+      }
+
+      const emailInput = document.getElementById('auth-email');
+      const passwordInput = document.getElementById('auth-password');
+      if (emailInput) emailInput.value = '';
+      if (passwordInput) passwordInput.value = '';
+
+      appendChatMessage('ai', 'You have been signed out. Please sign in to ask questions.', null, true);
+    }
+
+    function startNewSession() {
+      apiConfig.sessionId = '';
+      const viewport = document.getElementById('chat-messages');
+      if (viewport) {
+        viewport.innerHTML = `
+          <div class="chat-message ai">
+            <div class="msg-bubble">
+              <p>Started a new conversation session. You can now ask questions about aircraft specifications, fleet compositions, or airline operational profiles.</p>
+              <p style="margin-top:0.5rem; color:var(--text-secondary); font-size:0.875rem;">Type your question below or click one of the suggested prompts.</p>
+            </div>
+          </div>
+        `;
+      }
+    }
 
     function askPreset(question) {
       const input = document.getElementById('chat-input-field');
-      input.value = question;
-      handleChatSubmit(new Event('submit'));
+      if (input) {
+        input.value = question;
+        handleChatSubmit(new Event('submit'));
+      }
     }
 
     async function handleChatSubmit(e) {
       if (e) e.preventDefault();
       const input = document.getElementById('chat-input-field');
+      if (!input) return;
+
       const question = input.value.trim();
       if (!question) return;
+
+      const token = apiConfig.token;
+      if (!token) {
+        appendChatMessage('user', question);
+        input.value = '';
+        appendChatMessage(
+          'ai',
+          'Authentication Required: You must be signed in to query AeroIntel. Click "Sign In" below or in the header to log in or create an account.',
+          null,
+          true
+        );
+        openApiModal();
+        return;
+      }
 
       appendChatMessage('user', question);
       input.value = '';
 
       const typing = document.getElementById('chat-typing');
-      typing.classList.add('active');
+      if (typing) typing.classList.add('active');
 
       const viewport = document.getElementById('chat-messages');
-      viewport.scrollTop = viewport.scrollHeight;
+      if (viewport) viewport.scrollTop = viewport.scrollHeight;
 
-      // Try Backend Connection if token or live API is selected, else fallback to Smart Knowledge Base
-      let answered = false;
-
-      if (apiConfig.baseUrl) {
-        try {
-          const headers = { 'Content-Type': 'application/json' };
-          if (apiConfig.jwtToken) {
-            headers['Authorization'] = `Bearer ${apiConfig.jwtToken}`;
-          }
-
-          const response = await fetch(`${apiConfig.baseUrl}/ask`, {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify({ question: question })
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            typing.classList.remove('active');
-            appendChatMessage('ai', data.answer, '[Source: Live RAG Pipeline / Pinecone aerointel-v2]');
-            answered = true;
-          }
-        } catch (err) {
-          // If network / CORS / auth error, fall back gracefully to demonstration mode
-        }
+      const payload = { question: question };
+      if (apiConfig.sessionId) {
+        payload.session_id = apiConfig.sessionId;
       }
 
-      if (!answered) {
-        // Fallback to Knowledge Base simulation
-        setTimeout(() => {
-          typing.classList.remove('active');
-          const matched = authenticKnowledgeAnswers[question];
-          if (matched) {
-            appendChatMessage('ai', matched.answer, matched.citation);
-          } else {
-            // General query synthesiser based on real data
-            let fallbackAns = `Based on the **AeroIntel knowledge base** (17 documents across 9 aircraft and 8 airlines):\n\nYour question about "${question}" touches on our indexed fleet and technical specifications. In our 384-dimensional vector store, models include the Boeing 787-9/10, 777-200LR/300ER, 737 MAX 8, and Airbus A320neo, A350-900/1000, and A380.\n\nConnect a live running FastAPI backend with \`/auth/login\` credentials to execute unbounded generative queries via Google Gemini ADK and Pinecone.`;
-            appendChatMessage('ai', fallbackAns, '[Source: AeroIntel Vector Index aerointel-v2]');
+      try {
+        const response = await fetch(`${apiConfig.baseUrl}/ask`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (typing) typing.classList.remove('active');
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.session_id) {
+            apiConfig.sessionId = data.session_id;
           }
-        }, 850);
+          appendChatMessage('ai', data.answer);
+        } else if (response.status === 401) {
+          apiConfig.token = '';
+          updateAuthUI();
+          appendChatMessage(
+            'ai',
+            'Authentication Expired (HTTP 401): Your session has expired. Please sign in again.',
+            null,
+            true
+          );
+          openApiModal();
+        } else if (response.status === 422) {
+          const data = await response.json().catch(() => ({}));
+          const detail = typeof data.detail === 'string' ? data.detail : 'Question must be between 1 and 2000 characters.';
+          appendChatMessage('ai', `Validation Error (HTTP 422): ${detail}`, null, true);
+        } else if (response.status === 429) {
+          const data = await response.json().catch(() => ({}));
+          const detail = data.detail || 'Upstream service quota or rate limit reached. Please wait before retrying.';
+          appendChatMessage('ai', `Rate Limit Reached (HTTP 429): ${detail}`, null, true);
+        } else if (response.status === 502) {
+          const data = await response.json().catch(() => ({}));
+          const detail = data.detail || 'AeroIntel could not process the request.';
+          appendChatMessage('ai', `Upstream Error (HTTP 502): ${detail}`, null, true);
+        } else if (response.status === 503) {
+          const data = await response.json().catch(() => ({}));
+          const detail = data.detail || 'AeroIntel agent or database is not ready or temporarily unavailable.';
+          appendChatMessage('ai', `Service Unavailable (HTTP 503): ${detail}`, null, true);
+        } else {
+          const data = await response.json().catch(() => ({}));
+          const detail = data.detail || response.statusText || 'Unexpected error occurred.';
+          appendChatMessage('ai', `Error (HTTP ${response.status}): ${detail}`, null, true);
+        }
+      } catch (err) {
+        if (typing) typing.classList.remove('active');
+        appendChatMessage(
+          'ai',
+          `Network Error: Unable to communicate with the AeroIntel API at ${apiConfig.baseUrl}. Ensure the server is running.`,
+          null,
+          true
+        );
       }
     }
 
-    function appendChatMessage(role, text, citation) {
+    function escapeHtml(str) {
+      if (typeof str !== 'string') return '';
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function formatMessageContent(rawText) {
+      const safe = escapeHtml(rawText);
+      const bolded = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      const bulleted = bolded.replace(/\n•/g, '<br>•');
+      return bulleted.replace(/\n/g, '<br>');
+    }
+
+    function appendChatMessage(role, text, citation, isError) {
       const viewport = document.getElementById('chat-messages');
+      if (!viewport) return;
+
       const msgDiv = document.createElement('div');
       msgDiv.className = `chat-message ${role}`;
 
-      const formattedText = text.replace(/\n\n/g, '<br><br>').replace(/\n•/g, '<br>•').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      const formatted = formatMessageContent(text);
+      const safeCitation = citation ? escapeHtml(citation) : '';
+      const bubbleStyle = isError ? 'style="border-color:rgba(239,68,68,0.4); background:rgba(239,68,68,0.06); color:#fca5a5;"' : '';
 
       msgDiv.innerHTML = `
-        <div class="msg-bubble">
-          <div>${formattedText}</div>
-          ${citation ? `<div class="msg-citation"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>${citation}</div>` : ''}
+        <div class="msg-bubble" ${bubbleStyle}>
+          <div>${formatted}</div>
+          ${safeCitation ? `<div class="msg-citation"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>${safeCitation}</div>` : ''}
         </div>
       `;
 
@@ -3718,50 +4044,7 @@
       viewport.scrollTop = viewport.scrollHeight;
     }
 
-    /* API Modal Handlers */
-    function openApiModal() {
-      document.getElementById('api-modal').classList.add('active');
-    }
-
-    function closeApiModal(e) {
-      if (e.target.id === 'api-modal') {
-        document.getElementById('api-modal').classList.remove('active');
-      }
-    }
-
-    function closeApiModalDirect() {
-      document.getElementById('api-modal').classList.remove('active');
-    }
-
-    async function testAndSaveApiConfig() {
-      const url = document.getElementById('api-base-url').value.trim();
-      const token = document.getElementById('api-jwt-token').value.trim();
-      const statusPing = document.getElementById('api-status-ping');
-
-      statusPing.innerText = 'Pinging /health...';
-      statusPing.style.color = 'var(--accent-cyan)';
-
-      try {
-        const res = await fetch(`${url}/health`, { method: 'GET' });
-        if (res.ok) {
-          const json = await res.json();
-          apiConfig.baseUrl = url;
-          apiConfig.jwtToken = token;
-          statusPing.innerText = `Connected! API: ${json.app} (Healthy)`;
-          statusPing.style.color = '#10b981';
-          setTimeout(() => closeApiModalDirect(), 1000);
-          return;
-        }
-      } catch (e) {
-        statusPing.innerText = 'Could not reach API. Saved for fallback.';
-        statusPing.style.color = 'var(--text-tertiary)';
-      }
-
-      apiConfig.baseUrl = url;
-      apiConfig.jwtToken = token;
-      setTimeout(() => closeApiModalDirect(), 900);
-    }
-  </script>
+</script>
 </body>
 </html>
 

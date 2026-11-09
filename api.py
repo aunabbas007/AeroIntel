@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from google.adk.agents import LlmAgent
 from google.adk.models import FallbackModel
@@ -386,13 +386,18 @@ async def request_observability(request: Request, call_next):
 # 6. HEALTH AND READINESS
 # ============================================================
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 async def root():
-    return {
-        "app": "AeroIntel",
-        "status": "running",
-        "message": "Welcome to the AeroIntel API",
-    }
+    frontend_path = os.path.join(BASE_DIR, "index.html")
+    if not os.path.isfile(frontend_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Frontend file not found.",
+        )
+    return FileResponse(
+        frontend_path,
+        media_type="text/html",
+    )
 
 
 @app.get("/health")

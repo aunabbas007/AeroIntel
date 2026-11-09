@@ -3,11 +3,23 @@ def test_root_endpoint(client):
     response = client.get("/")
 
     assert response.status_code == 200
+    assert "text/html" in response.headers.get("content-type", "")
+    assert "<title>AeroIntel" in response.text or "<!DOCTYPE html>" in response.text
 
-    data = response.json()
-    assert data["app"] == "AeroIntel"
-    assert data["status"] == "running"
-    assert data["message"] == "Welcome to the AeroIntel API"
+
+def test_root_endpoint_returns_404_when_frontend_missing(client, monkeypatch):
+    import os
+    original_isfile = os.path.isfile
+
+    def fake_isfile(path):
+        if str(path).endswith("index.html"):
+            return False
+        return original_isfile(path)
+
+    monkeypatch.setattr(os.path, "isfile", fake_isfile)
+    response = client.get("/")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Frontend file not found."
 
 
 def test_health_endpoint(client):
