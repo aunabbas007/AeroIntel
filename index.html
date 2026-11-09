@@ -1,0 +1,3767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AeroIntel — AI-Powered Aviation Intelligence Platform</title>
+  <meta name="description" content="An intelligent aviation research platform. Explore aircraft specifications, compare airlines, and uncover aviation insights through conversational AI and semantic retrieval.">
+
+  <!-- Google Fonts: Onest 400, 500, 600, 700 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Lenis Smooth Scroll -->
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js"></script>
+  <!-- Three.js for 3D Aircraft Visual -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    /* ==========================================================================
+       1. CORE DESIGN SYSTEM & VARIABLES
+       Flowstate Design Token Implementation
+       ========================================================================== */
+    :root {
+      --bg-dark: #04050c;
+      --bg-surface: rgba(10, 14, 26, 0.7);
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.65);
+      --text-tertiary: rgba(255, 255, 255, 0.4);
+      --glass-fill: rgba(255, 255, 255, 0.03);
+      --glass-fill-hover: rgba(255, 255, 255, 0.06);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-border-hover: rgba(255, 255, 255, 0.18);
+      --accent-cyan: #00f0ff;
+      --accent-blue: #0070f3;
+      --accent-violet: #7928ca;
+      --accent-magenta: #ec4899;
+      --font-onest: 'Onest', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --radius-pill: 9999px;
+      --radius-card: 1.25rem;
+      --radius-inner: 0.875rem;
+      --transition-smooth: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      --transition-spring: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      font-size: 16px;
+      background-color: var(--bg-dark);
+      color: var(--text-primary);
+      font-family: var(--font-onest);
+      overflow-x: hidden;
+      scroll-behavior: auto; /* Handled by Lenis */
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-primary);
+      font-family: var(--font-onest);
+      font-weight: 400;
+      line-height: 1.6;
+      overflow-x: hidden;
+      position: relative;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Selection */
+    ::selection {
+      background: rgba(0, 240, 255, 0.25);
+      color: #ffffff;
+    }
+
+    /* Links & Buttons Reset */
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button {
+      font-family: inherit;
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: inherit;
+    }
+
+    /* ==========================================================================
+       2. BACKGROUND LAYERS: WEBGL FLUID SIMULATION & RADIAL SCRIM
+       ========================================================================== */
+    #canvas-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      pointer-events: auto;
+      overflow: hidden;
+    }
+
+    #fluid-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Radial Scrim from Flowstate specifications */
+    .radial-scrim {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+      background: radial-gradient(circle at 50% 25%, rgba(4, 5, 12, 0.15) 0%, rgba(4, 5, 12, 0.72) 65%, #04050c 100%);
+    }
+
+    /* Subtle Technical Grid Lines */
+    .aviation-grid-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      background-size: 80px 80px;
+      mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.8) 0%, transparent 80%);
+      -webkit-mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.8) 0%, transparent 80%);
+    }
+
+    /* ==========================================================================
+       3. TYPOGRAPHY & BUTTON STYLING
+       ========================================================================== */
+    .text-cyan { color: var(--accent-cyan); }
+    .text-secondary { color: var(--text-secondary); }
+    .text-tertiary { color: var(--text-tertiary); }
+
+    /* Pill Buttons */
+    .btn-white-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.625rem;
+      padding: 0.8125rem 1.875rem;
+      background: #ffffff;
+      color: #04050c;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      border-radius: var(--radius-pill);
+      transition: var(--transition-smooth);
+      box-shadow: 0 0 25px rgba(255, 255, 255, 0.15);
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .btn-white-pill:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 0 35px rgba(0, 240, 255, 0.35);
+      background: #ffffff;
+    }
+
+    .btn-white-pill:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    .btn-glass-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.625rem;
+      padding: 0.8125rem 1.875rem;
+      background: var(--glass-fill);
+      color: #ffffff;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: var(--transition-smooth);
+      white-space: nowrap;
+    }
+
+    .btn-glass-pill:hover {
+      background: var(--glass-fill-hover);
+      border-color: var(--glass-border-hover);
+      transform: translateY(-2px);
+      color: var(--accent-cyan);
+    }
+
+    .btn-glass-pill:active {
+      transform: translateY(0);
+    }
+
+    /* Glass Panels */
+    .glass-card {
+      background: var(--glass-fill);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: var(--radius-card);
+      transition: var(--transition-smooth);
+      position: relative;
+    }
+
+    .glass-card:hover {
+      border-color: var(--glass-border-hover);
+      background: var(--glass-fill-hover);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(0, 240, 255, 0.03);
+    }
+
+    /* Container */
+    .site-container {
+      width: 100%;
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* ==========================================================================
+       4. NAVIGATION (Flowstate exact layout)
+       ========================================================================== */
+    .navbar {
+      position: fixed;
+      top: 1.5rem;
+      left: 0;
+      width: 100%;
+      z-index: 100;
+      display: flex;
+      justify-content: center;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .navbar.animate-in {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .nav-wrapper {
+      width: 100%;
+      max-width: 1240px;
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: auto;
+    }
+
+    /* Logo */
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 600;
+      font-size: 1.25rem;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+    }
+
+    .logo-icon-svg {
+      width: 2rem;
+      height: 2rem;
+      filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.5));
+    }
+
+    /* Center Pill */
+    .nav-center-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      background: rgba(10, 14, 26, 0.65);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      padding: 0.375rem 0.625rem;
+      border-radius: var(--radius-pill);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .nav-link {
+      padding: 0.5rem 1.125rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      border-radius: var(--radius-pill);
+      transition: var(--transition-smooth);
+    }
+
+    .nav-link:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .nav-link.active {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    /* Right Action */
+    .nav-action {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .nav-cta-btn {
+      padding: 0.6875rem 1.375rem;
+      font-size: 0.875rem;
+    }
+
+    /* ==========================================================================
+       5. HERO SECTION & WORD ANIMATIONS
+       Timings:
+       - Badge: 320ms delay
+       - Heading: 480ms delay, 85ms word stagger, 720ms duration
+       - Subtitle: 1150ms delay, 22ms word stagger, 600ms duration
+       - CTA: 1450ms delay
+       ========================================================================== */
+    .hero-section {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      position: relative;
+      padding: 8rem 0 5rem;
+      overflow: hidden;
+      z-index: 2;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      align-items: center;
+      gap: 3rem;
+      width: 100%;
+    }
+
+    .hero-content {
+      max-width: 650px;
+    }
+
+    /* Badge */
+    .hero-badge-wrap {
+      display: inline-flex;
+      margin-bottom: 1.75rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .hero-badge-wrap.animate-in {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.375rem 1rem;
+      background: rgba(0, 240, 255, 0.05);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: var(--radius-pill);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.15);
+    }
+
+    .badge-pulse {
+      width: 0.45rem;
+      height: 0.45rem;
+      background-color: var(--accent-cyan);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--accent-cyan);
+      animation: pulse-dot 2s infinite ease-in-out;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 0.4; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.3); }
+    }
+
+    /* Word-by-Word Reveal Heading */
+    .hero-title {
+      font-size: clamp(2.5rem, 5.2vw, 4.25rem);
+      font-weight: 500;
+      line-height: 1.1;
+      letter-spacing: -0.035em;
+      margin-bottom: 1.75rem;
+      color: #ffffff;
+    }
+
+    .word-wrap {
+      display: inline-block;
+      overflow: hidden;
+      vertical-align: top;
+      margin-right: 0.25em;
+    }
+
+    .word-inner {
+      display: inline-block;
+      transform: translateY(115%);
+      opacity: 0;
+      transition: transform 0.72s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.72s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .word-inner.animate-in {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* Subtitle with 22ms word stagger */
+    .hero-subtitle {
+      font-size: clamp(1rem, 1.3vw, 1.1875rem);
+      line-height: 1.65;
+      color: var(--text-secondary);
+      margin-bottom: 2.5rem;
+      max-width: 580px;
+    }
+
+    .sub-word-wrap {
+      display: inline-block;
+      overflow: hidden;
+      vertical-align: top;
+      margin-right: 0.25em;
+    }
+
+    .sub-word-inner {
+      display: inline-block;
+      transform: translateY(105%);
+      opacity: 0;
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .sub-word-inner.animate-in {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* Hero CTA Group */
+    .hero-cta-group {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .hero-cta-group.animate-in {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* 3D Aircraft Container */
+    .hero-3d-visual {
+      position: relative;
+      width: 100%;
+      height: 540px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    #aircraft-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.7));
+    }
+
+    /* Technical Telemetry HUD Overlay around aircraft */
+    .aircraft-hud-telemetry {
+      position: absolute;
+      top: 10%;
+      right: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      pointer-events: none;
+      font-size: 0.6875rem;
+      font-family: monospace;
+      color: rgba(0, 240, 255, 0.7);
+      background: rgba(4, 5, 12, 0.6);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      backdrop-filter: blur(8px);
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-inner);
+      letter-spacing: 0.05em;
+    }
+
+    .hud-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+
+    .hud-label { color: var(--text-tertiary); }
+    .hud-val { color: var(--accent-cyan); font-weight: 600; }
+
+    /* ==========================================================================
+       6. SECTIONS COMMON STYLING
+       ========================================================================== */
+    .section-wrap {
+      padding: 7rem 0;
+      position: relative;
+      z-index: 2;
+    }
+
+    .section-header {
+      text-align: center;
+      max-width: 760px;
+      margin: 0 auto 4.5rem;
+    }
+
+    .section-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      margin-bottom: 1rem;
+    }
+
+    .section-title {
+      font-size: clamp(2rem, 3.5vw, 3rem);
+      font-weight: 500;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      color: #ffffff;
+      margin-bottom: 1rem;
+    }
+
+    .section-desc {
+      font-size: 1.0625rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* Scroll Reveal Animation Utility */
+    .reveal-on-scroll {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .reveal-on-scroll.is-revealed {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ==========================================================================
+       7. SECTION A: PLATFORM CAPABILITIES (4 Glass Cards)
+       ========================================================================== */
+    .capabilities-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+    }
+
+    .cap-card {
+      padding: 2.25rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
+      min-height: 320px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cap-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .cap-card:hover::before {
+      opacity: 1;
+    }
+
+    .cap-number {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      letter-spacing: 0.1em;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .cap-icon {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      background: rgba(0, 240, 255, 0.06);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-cyan);
+      margin-bottom: 1.75rem;
+      transition: var(--transition-smooth);
+    }
+
+    .cap-card:hover .cap-icon {
+      transform: scale(1.1);
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+      border-color: var(--accent-cyan);
+    }
+
+    .cap-title {
+      font-size: 1.25rem;
+      font-weight: 500;
+      color: #ffffff;
+      margin-bottom: 0.875rem;
+      letter-spacing: -0.01em;
+    }
+
+    .cap-desc {
+      font-size: 0.9375rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ==========================================================================
+       8. SECTION B: AIRCRAFT EXPLORER (Authentic Knowledge Base)
+       ========================================================================== */
+    .aircraft-filter-bar {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 3rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 0.5rem 1.25rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border-radius: var(--radius-pill);
+      background: var(--glass-fill);
+      border: 1px solid var(--glass-border);
+      color: var(--text-secondary);
+      transition: var(--transition-smooth);
+    }
+
+    .filter-btn:hover, .filter-btn.active {
+      color: #ffffff;
+      background: rgba(0, 240, 255, 0.1);
+      border-color: rgba(0, 240, 255, 0.3);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+    }
+
+    .aircraft-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.75rem;
+    }
+
+    .aircraft-card {
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .aircraft-visual-header {
+      width: 100%;
+      height: 140px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(0, 240, 255, 0.04) 100%);
+      border-radius: var(--radius-inner);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin-bottom: 1.25rem;
+      overflow: hidden;
+    }
+
+    .aircraft-silhouette-svg {
+      width: 80%;
+      height: 70%;
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.7);
+      stroke-width: 1.5;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+      filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.25));
+      transition: var(--transition-smooth);
+    }
+
+    .aircraft-card:hover .aircraft-silhouette-svg {
+      stroke: var(--accent-cyan);
+      filter: drop-shadow(0 0 16px rgba(0, 240, 255, 0.6));
+      transform: scale(1.04);
+    }
+
+    .aircraft-tag-badge {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      background: rgba(4, 5, 12, 0.8);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-pill);
+      font-size: 0.6875rem;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      letter-spacing: 0.04em;
+    }
+
+    .aircraft-mfg {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent-cyan);
+      margin-bottom: 0.25rem;
+    }
+
+    .aircraft-name {
+      font-size: 1.375rem;
+      font-weight: 500;
+      color: #ffffff;
+      margin-bottom: 1rem;
+      letter-spacing: -0.01em;
+    }
+
+    .aircraft-specs-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .spec-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .spec-label {
+      font-size: 0.75rem;
+      color: var(--text-tertiary);
+    }
+
+    .spec-val {
+      font-size: 0.9375rem;
+      font-weight: 500;
+      color: #ffffff;
+    }
+
+    .spec-val.accent {
+      color: var(--accent-cyan);
+    }
+
+    .aircraft-action-btn {
+      margin-top: auto;
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: var(--radius-pill);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--glass-border);
+      color: #ffffff;
+      font-size: 0.875rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: var(--transition-smooth);
+    }
+
+    .aircraft-action-btn:hover {
+      background: rgba(0, 240, 255, 0.1);
+      border-color: rgba(0, 240, 255, 0.3);
+      color: var(--accent-cyan);
+    }
+
+    /* ==========================================================================
+       9. SECTION C: AIRLINE INTELLIGENCE
+       ========================================================================== */
+    .airlines-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+    }
+
+    .airline-card {
+      padding: 2rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
+    }
+
+    .airline-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+
+    .airline-country-badge {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      padding: 0.25rem 0.625rem;
+      background: rgba(0, 240, 255, 0.08);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: var(--radius-pill);
+      letter-spacing: 0.04em;
+    }
+
+    .airline-name {
+      font-size: 1.375rem;
+      font-weight: 500;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+    }
+
+    .airline-hub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      margin-bottom: 1.25rem;
+    }
+
+    .airline-fleet-stats {
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: var(--radius-inner);
+      padding: 0.875rem 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      margin-bottom: 1.25rem;
+    }
+
+    .fleet-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8125rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .fleet-row:last-child { margin-bottom: 0; }
+    .fleet-label { color: var(--text-tertiary); }
+    .fleet-val { color: #ffffff; font-weight: 500; }
+
+    .airline-fleet-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+    }
+
+    .fleet-tag {
+      font-size: 0.6875rem;
+      padding: 0.2rem 0.5rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--glass-border);
+      border-radius: 4px;
+      color: var(--text-secondary);
+    }
+
+    /* ==========================================================================
+       10. SECTION D: HOW AEROINTEL WORKS (8-Step RAG Architecture Flow)
+       ========================================================================== */
+    .pipeline-wrapper {
+      position: relative;
+      margin-top: 3rem;
+    }
+
+    .pipeline-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+      row-gap: 2.5rem;
+      position: relative;
+    }
+
+    .pipeline-step-card {
+      padding: 1.75rem 1.5rem;
+      position: relative;
+      border-radius: var(--radius-card);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      color: var(--accent-cyan);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+    }
+
+    .step-title {
+      font-size: 1.125rem;
+      font-weight: 500;
+      color: #ffffff;
+      margin-bottom: 0.625rem;
+    }
+
+    .step-desc {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      line-height: 1.55;
+    }
+
+    .step-connector {
+      position: absolute;
+      top: 50%;
+      right: -1rem;
+      width: 0.75rem;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent-cyan), transparent);
+      z-index: 10;
+    }
+
+    /* ==========================================================================
+       11. SECTION E: ARCHITECTURE (AI Engineering Stack)
+       ========================================================================== */
+    .tech-stack-container {
+      background: var(--glass-fill);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(24px);
+      border-radius: var(--radius-card);
+      padding: 3rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .stack-layers {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .stack-layer {
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: var(--radius-inner);
+      padding: 1.5rem 2rem;
+      background: rgba(4, 5, 12, 0.4);
+    }
+
+    .layer-heading {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .layer-heading::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(0, 240, 255, 0.2), transparent);
+    }
+
+    .tech-badges-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 1rem;
+    }
+
+    .tech-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      padding: 0.875rem 1.25rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-inner);
+      transition: var(--transition-smooth);
+    }
+
+    .tech-pill:hover {
+      border-color: rgba(0, 240, 255, 0.3);
+      background: rgba(0, 240, 255, 0.04);
+      transform: translateY(-2px);
+    }
+
+    .tech-icon-wrap {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-cyan);
+      font-size: 0.875rem;
+    }
+
+    .tech-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tech-name {
+      font-size: 0.9375rem;
+      font-weight: 500;
+      color: #ffffff;
+    }
+
+    .tech-role {
+      font-size: 0.6875rem;
+      color: var(--text-tertiary);
+    }
+
+    /* ==========================================================================
+       12. SECTION F: INTERACTIVE AI DEMONSTRATION
+       ========================================================================== */
+    .chat-demo-container {
+      max-width: 980px;
+      margin: 0 auto;
+      background: rgba(10, 14, 26, 0.75);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(30px);
+      border-radius: 1.5rem;
+      overflow: hidden;
+      box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 240, 255, 0.05);
+    }
+
+    .chat-demo-header {
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .chat-assistant-meta {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .assistant-avatar {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #04050c;
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+    }
+
+    .assistant-details h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .assistant-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.6875rem;
+      color: #10b981;
+    }
+
+    .assistant-status::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background-color: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #10b981;
+    }
+
+    .chat-config-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--text-tertiary);
+      padding: 0.4rem 0.875rem;
+      border-radius: var(--radius-pill);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--glass-border);
+      transition: var(--transition-smooth);
+    }
+
+    .chat-config-btn:hover {
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Preset Questions */
+    .suggested-questions-row {
+      padding: 1.25rem 2rem 0.5rem;
+      display: flex;
+      gap: 0.625rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .suggested-questions-row::-webkit-scrollbar {
+      display: none;
+    }
+
+    .question-chip {
+      padding: 0.5rem 1rem;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-pill);
+      white-space: nowrap;
+      transition: var(--transition-smooth);
+      cursor: pointer;
+    }
+
+    .question-chip:hover {
+      color: #ffffff;
+      background: rgba(0, 240, 255, 0.08);
+      border-color: rgba(0, 240, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    /* Chat Messages Viewport */
+    .chat-viewport {
+      height: 380px;
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    }
+
+    .chat-message {
+      display: flex;
+      gap: 1rem;
+      max-width: 85%;
+      animation: message-pop 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes message-pop {
+      from { opacity: 0; transform: translateY(10px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .chat-message.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .chat-message.ai {
+      align-self: flex-start;
+    }
+
+    .msg-bubble {
+      padding: 1rem 1.375rem;
+      border-radius: 1.25rem;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    .chat-message.user .msg-bubble {
+      background: rgba(0, 240, 255, 0.12);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      color: #ffffff;
+      border-bottom-right-radius: 0.25rem;
+    }
+
+    .chat-message.ai .msg-bubble {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--glass-border);
+      color: var(--text-primary);
+      border-bottom-left-radius: 0.25rem;
+    }
+
+    .msg-citation {
+      margin-top: 0.75rem;
+      padding-top: 0.625rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.75rem;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    /* Typing indicator */
+    .typing-indicator {
+      display: none;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.75rem 1.25rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--glass-border);
+      border-radius: 1rem;
+      width: fit-content;
+      margin-left: 3rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .typing-indicator.active {
+      display: flex;
+    }
+
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      background-color: var(--accent-cyan);
+      border-radius: 50%;
+      animation: typing-blink 1.4s infinite;
+    }
+
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typing-blink {
+      0%, 100% { opacity: 0.2; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(-4px); }
+    }
+
+    /* Chat Input Form */
+    .chat-input-bar {
+      padding: 1.25rem 2rem;
+      border-top: 1px solid var(--glass-border);
+      display: flex;
+      gap: 0.875rem;
+      background: rgba(4, 5, 12, 0.4);
+    }
+
+    .chat-text-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-pill);
+      padding: 0.875rem 1.5rem;
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      outline: none;
+      transition: var(--transition-smooth);
+    }
+
+    .chat-text-input:focus {
+      border-color: rgba(0, 240, 255, 0.4);
+      background: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.15);
+    }
+
+    .chat-text-input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    .chat-send-btn {
+      width: 3.125rem;
+      height: 3.125rem;
+      border-radius: 50%;
+      background: #ffffff;
+      color: #04050c;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition-smooth);
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+    }
+
+    .chat-send-btn:hover {
+      transform: scale(1.06);
+      background: var(--accent-cyan);
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.5);
+    }
+
+    /* ==========================================================================
+       13. SECTION G: FINAL CTA
+       ========================================================================== */
+    .cta-section {
+      padding: 8rem 0;
+      position: relative;
+      z-index: 2;
+      text-align: center;
+    }
+
+    .cta-card {
+      background: radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.08) 0%, rgba(10, 14, 26, 0.6) 80%);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(30px);
+      border-radius: 2rem;
+      padding: 5.5rem 2rem;
+      max-width: 980px;
+      margin: 0 auto;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    }
+
+    .cta-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+    }
+
+    .cta-title {
+      font-size: clamp(2.25rem, 4vw, 3.5rem);
+      font-weight: 500;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.25rem;
+      color: #ffffff;
+    }
+
+    .cta-desc {
+      font-size: 1.125rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.6;
+    }
+
+    /* ==========================================================================
+       14. FOOTER (Flowstate 1650ms animation delay spec)
+       ========================================================================== */
+    .footer {
+      padding: 5rem 0 3rem;
+      border-top: 1px solid var(--glass-border);
+      position: relative;
+      z-index: 2;
+      background: rgba(4, 5, 12, 0.8);
+      backdrop-filter: blur(20px);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .footer.animate-in {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .footer-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 3.5rem;
+      flex-wrap: wrap;
+      gap: 2.5rem;
+    }
+
+    .footer-brand {
+      max-width: 340px;
+    }
+
+    .footer-brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 1rem;
+    }
+
+    .footer-brand-text {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .footer-links-group {
+      display: flex;
+      gap: 4rem;
+      flex-wrap: wrap;
+    }
+
+    .footer-col-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      margin-bottom: 1.25rem;
+    }
+
+    .footer-links-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .footer-link-item a {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      transition: var(--transition-smooth);
+    }
+
+    .footer-link-item a:hover {
+      color: var(--accent-cyan);
+      transform: translateX(2px);
+    }
+
+    .footer-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 2rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.8125rem;
+      color: var(--text-tertiary);
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .footer-sys-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--accent-cyan);
+    }
+
+    .sys-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 8px var(--accent-cyan);
+    }
+
+    /* ==========================================================================
+       15. MODALS & SETTINGS DRAWER
+       ========================================================================== */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(4, 5, 12, 0.85);
+      backdrop-filter: blur(16px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 640px;
+      background: #0a0e1a;
+      border: 1px solid var(--glass-border-hover);
+      border-radius: 1.5rem;
+      padding: 2.5rem;
+      box-shadow: 0 25px 80px rgba(0, 0, 0, 0.8), 0 0 50px rgba(0, 240, 255, 0.1);
+      position: relative;
+    }
+
+    .modal-close-btn {
+      position: absolute;
+      top: 1.5rem;
+      right: 1.5rem;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      transition: var(--transition-smooth);
+    }
+
+    .modal-close-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    /* Responsive Breakpoints */
+    @media (max-width: 1024px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+      .hero-content {
+        margin: 0 auto;
+      }
+      .hero-cta-group {
+        justify-content: center;
+      }
+      .capabilities-grid, .airlines-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .aircraft-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .pipeline-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .step-connector { display: none; }
+    }
+
+    @media (max-width: 768px) {
+      .nav-center-pill { display: none; }
+      .capabilities-grid, .airlines-grid, .aircraft-grid, .pipeline-grid {
+        grid-template-columns: 1fr;
+      }
+      .hero-3d-visual {
+        height: 380px;
+      }
+      .tech-stack-container {
+        padding: 1.5rem;
+      }
+      .chat-viewport {
+        height: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background WebGL Simulation & Scrims -->
+  <div id="canvas-container">
+    <canvas id="fluid-canvas"></canvas>
+  </div>
+  <div class="radial-scrim"></div>
+  <div class="aviation-grid-overlay"></div>
+
+  <!-- NAVIGATION (150ms delay) -->
+  <header class="navbar" id="main-nav">
+    <div class="nav-wrapper">
+      <a href="#" class="nav-logo">
+        <svg class="logo-icon-svg" viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="16" r="15" stroke="rgba(0,240,255,0.4)" stroke-width="1.5" stroke-dasharray="3 3"/>
+          <path d="M16 4L20 14L28 16L20 18L16 28L12 18L4 16L12 14Z" fill="url(#logo-grad)"/>
+          <defs>
+            <linearGradient id="logo-grad" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#00f0ff"/>
+              <stop offset="1" stop-color="#0070f3"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <span>AeroIntel</span>
+      </a>
+
+      <nav class="nav-center-pill">
+        <a href="#overview" class="nav-link active">Overview</a>
+        <a href="#capabilities" class="nav-link">Capabilities</a>
+        <a href="#aircraft" class="nav-link">Aircraft</a>
+        <a href="#architecture" class="nav-link">Architecture</a>
+        <a href="#demo" class="nav-link">Ask AI</a>
+      </nav>
+
+      <div class="nav-action">
+        <a href="#demo" class="btn-white-pill nav-cta-btn">
+          <span>Explore Platform</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO SECTION -->
+    <section class="hero-section" id="overview">
+      <div class="site-container">
+        <div class="hero-grid">
+          
+          <!-- Hero Text Content -->
+          <div class="hero-content">
+            <!-- Badge (320ms entrance) -->
+            <div class="hero-badge-wrap" id="hero-badge">
+              <div class="hero-badge">
+                <span class="badge-pulse"></span>
+                <span>AI-Powered Aviation Intelligence</span>
+              </div>
+            </div>
+
+            <!-- Heading with Word-by-word reveal (480ms start, 85ms stagger, 720ms duration) -->
+            <h1 class="hero-title" id="hero-heading">
+              <span class="word-wrap"><span class="word-inner">Explore</span></span>
+              <span class="word-wrap"><span class="word-inner">Aviation</span></span>
+              <span class="word-wrap"><span class="word-inner">Beyond</span></span>
+              <span class="word-wrap"><span class="word-inner text-cyan">Boundaries</span></span>
+            </h1>
+
+            <!-- Subtitle with Word stagger (1150ms start, 22ms stagger, 600ms duration) -->
+            <p class="hero-subtitle" id="hero-subtitle">
+              <!-- Split dynamically via JS into spans with exact 22ms stagger -->
+              An intelligent aviation research platform. Explore aircraft specifications, compare airlines, and uncover aviation insights through conversational AI.
+            </p>
+
+            <!-- Hero CTAs (1450ms entrance) -->
+            <div class="hero-cta-group" id="hero-cta">
+              <a href="#demo" class="btn-white-pill">
+                <span>Explore AeroIntel</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </a>
+              <a href="#architecture" class="btn-glass-pill">
+                <span>View Architecture</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Hero 3D Commercial Aircraft Visual -->
+          <div class="hero-3d-visual" id="hero-3d-container">
+            <canvas id="aircraft-canvas"></canvas>
+            
+            <!-- Technical HUD Telemetry Overlay -->
+            <div class="aircraft-hud-telemetry">
+              <div class="hud-row">
+                <span class="hud-label">AIRFRAME:</span>
+                <span class="hud-val">B787 / A350 CLASS</span>
+              </div>
+              <div class="hud-row">
+                <span class="hud-label">VECTOR DIM:</span>
+                <span class="hud-val">384-DIM</span>
+              </div>
+              <div class="hud-row">
+                <span class="hud-label">RAG STATUS:</span>
+                <span class="hud-val">SYNCHRONIZED</span>
+              </div>
+              <div class="hud-row">
+                <span class="hud-label">TELEMETRY:</span>
+                <span class="hud-val">ORBITAL DRIFT 0.8°/S</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION A: PLATFORM CAPABILITIES -->
+    <section class="section-wrap" id="capabilities">
+      <div class="site-container">
+        <div class="section-header reveal-on-scroll">
+          <div class="section-kicker">Core Systems</div>
+          <h2 class="section-title">Intelligence Behind Every Flight</h2>
+          <p class="section-desc">Harnessing advanced Retrieval-Augmented Generation to turn unstructured aviation data into precise engineering answers.</p>
+        </div>
+
+        <div class="capabilities-grid">
+          <!-- Card 01 -->
+          <div class="glass-card cap-card reveal-on-scroll">
+            <div>
+              <div class="cap-number">
+                <span>CAPABILITY_01</span>
+                <span style="opacity:0.4;">AI_AGNT</span>
+              </div>
+              <div class="cap-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><path d="M8 10h.01"></path><path d="M12 10h.01"></path><path d="M16 10h.01"></path></svg>
+              </div>
+              <h3 class="cap-title">AI Aviation Assistant</h3>
+              <p class="cap-desc">Ask natural-language questions about aircraft, airlines and aviation information with strict source-grounded answers.</p>
+            </div>
+          </div>
+
+          <!-- Card 02 -->
+          <div class="glass-card cap-card reveal-on-scroll">
+            <div>
+              <div class="cap-number">
+                <span>CAPABILITY_02</span>
+                <span style="opacity:0.4;">VEC_RAG</span>
+              </div>
+              <div class="cap-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><path d="M11 8v6"></path><path d="M8 11h6"></path></svg>
+              </div>
+              <h3 class="cap-title">Intelligent Document Retrieval</h3>
+              <p class="cap-desc">Retrieve relevant information from curated aviation knowledge sources using 384-dimensional semantic vector search.</p>
+            </div>
+          </div>
+
+          <!-- Card 03 -->
+          <div class="glass-card cap-card reveal-on-scroll">
+            <div>
+              <div class="cap-number">
+                <span>CAPABILITY_03</span>
+                <span style="opacity:0.4;">SPEC_INT</span>
+              </div>
+              <div class="cap-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"></path></svg>
+              </div>
+              <h3 class="cap-title">Aircraft Intelligence</h3>
+              <p class="cap-desc">Explore technical specifications, engine configurations, nautical range, passenger capacity, and MTOW characteristics.</p>
+            </div>
+          </div>
+
+          <!-- Card 04 -->
+          <div class="glass-card cap-card reveal-on-scroll">
+            <div>
+              <div class="cap-number">
+                <span>CAPABILITY_04</span>
+                <span style="opacity:0.4;">FLT_ANLY</span>
+              </div>
+              <div class="cap-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+              </div>
+              <h3 class="cap-title">Airline Intelligence</h3>
+              <p class="cap-desc">Explore airline operational profiles, hub networks, fleet compositions, and manufacturer fleet associations.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION B: AIRCRAFT EXPLORER -->
+    <section class="section-wrap" id="aircraft">
+      <div class="site-container">
+        <div class="section-header reveal-on-scroll">
+          <div class="section-kicker">Knowledge Base Showcase</div>
+          <h2 class="section-title">Explore the Machines That Connect the World</h2>
+          <p class="section-desc">Authentic data from 9 aircraft models indexed in the AeroIntel vector database.</p>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="aircraft-filter-bar reveal-on-scroll">
+          <button class="filter-btn active" data-filter="all">All Models (9)</button>
+          <button class="filter-btn" data-filter="widebody">Wide-Body (7)</button>
+          <button class="filter-btn" data-filter="narrowbody">Narrow-Body (2)</button>
+          <button class="filter-btn" data-filter="boeing">Boeing (5)</button>
+          <button class="filter-btn" data-filter="airbus">Airbus (4)</button>
+        </div>
+
+        <!-- Aircraft Grid -->
+        <div class="aircraft-grid" id="aircraft-cards-container">
+          
+          <!-- Boeing 787-9 -->
+          <div class="glass-card aircraft-card reveal-on-scroll" data-category="widebody boeing">
+            <div class="aircraft-visual-header">
+              <span class="aircraft-tag-badge">WIDE-BODY</span>
+              <svg class="aircraft-silhouette-svg" viewBox="0 0 200 80">
+                <path d="M20 40 Q70 38 120 37 Q160 38 180 40 Q160 42 120 43 Q70 42 20 40 Z"/>
+                <path d="M90 39 L145 10 L155 12 L115 39 Z"/>
+                <path d="M90 41 L145 70 L155 68 L115 41 Z"/>
+                <path d="M22 40 L35 22 L45 23 L32 40 Z"/>
+                <circle cx="108" cy="31" r="5" fill="rgba(0,240,255,0.4)"/>
+                <circle cx="108" cy="49" r="5" fill="rgba(0,240,255,0.4)"/>
+              </svg>
+            </div>
+            <div class="aircraft-mfg">Boeing</div>
+            <h3 class="aircraft-name">Boeing 787-9 Dreamliner</h3>
+            <div class="aircraft-specs-list">
+              <div class="spec-item">
+                <span class="spec-label">Range</span>
+                <span class="spec-val accent">8,300 NM</span>
+                <span class="spec-label" style="font-size:0.7rem;">15,370 km</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Capacity</span>
+                <span class="spec-val">250–325 pax</span>
+                <span class="spec-label" style="font-size:0.7rem;">Two-class</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">MTOW</span>
+                <span class="spec-val">259,220 kg</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Wingspan</span>
+                <span class="spec-val">60.1 m</span>
+              </div>
+            </div>
+            <button class="aircraft-action-btn" onclick="openSpecModal('787-9')">
+              <span>View Specifications</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- Boeing 787-10 -->
+          <div class="glass-card aircraft-card reveal-on-scroll" data-category="widebody boeing">
+            <div class="aircraft-visual-header">
+              <span class="aircraft-tag-badge">WIDE-BODY</span>
+              <svg class="aircraft-silhouette-svg" viewBox="0 0 200 80">
+                <path d="M15 40 Q70 38 130 37 Q170 38 185 40 Q170 42 130 43 Q70 42 15 40 Z"/>
+                <path d="M95 39 L150 10 L160 12 L120 39 Z"/>
+                <path d="M95 41 L150 70 L160 68 L120 41 Z"/>
+                <path d="M18 40 L32 20 L42 21 L28 40 Z"/>
+                <circle cx="112" cy="30" r="5" fill="rgba(0,240,255,0.4)"/>
+                <circle cx="112" cy="50" r="5" fill="rgba(0,240,255,0.4)"/>
+              </svg>
+            </div>
+            <div class="aircraft-mfg">Boeing</div>
+            <h3 class="aircraft-name">Boeing 787-10 Dreamliner</h3>
+            <div class="aircraft-specs-list">
+              <div class="spec-item">
+                <span class="spec-label">Range</span>
+                <span class="spec-val accent">7,500 NM</span>
+                <span class="spec-label" style="font-size:0.7rem;">13,890 km</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Capacity</span>
+                <span class="spec-val">300–375 pax</span>
+                <span class="spec-label" style="font-size:0.7rem;">Two-class</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">MTOW</span>
+                <span class="spec-val">260,360 kg</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Length</span>
+                <span class="spec-val">68.3 m</span>
+              </div>
+            </div>
+            <button class="aircraft-action-btn" onclick="openSpecModal('787-10')">
+              <span>View Specifications</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- Airbus A350-900 -->
+          <div class="glass-card aircraft-card reveal-on-scroll" data-category="widebody airbus">
+            <div class="aircraft-visual-header">
+              <span class="aircraft-tag-badge">WIDE-BODY</span>
+              <svg class="aircraft-silhouette-svg" viewBox="0 0 200 80">
+                <path d="M20 40 Q75 38 125 37 Q165 38 182 40 Q165 42 125 43 Q75 42 20 40 Z"/>
+                <path d="M88 39 L142 8 L152 9 L114 39 Z"/>
+                <path d="M88 41 L142 72 L152 71 L114 41 Z"/>
+                <path d="M24 40 L38 22 L46 23 L34 40 Z"/>
+                <circle cx="106" cy="30" r="5" fill="rgba(0,240,255,0.4)"/>
+                <circle cx="106" cy="50" r="5" fill="rgba(0,240,255,0.4)"/>
+              </svg>
+            </div>
+            <div class="aircraft-mfg">Airbus</div>
+            <h3 class="aircraft-name">Airbus A350-900</h3>
+            <div class="aircraft-specs-list">
+              <div class="spec-item">
+                <span class="spec-label">Range</span>
+                <span class="spec-val accent">8,600 NM</span>
+                <span class="spec-label" style="font-size:0.7rem;">15,750 km</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Capacity</span>
+                <span class="spec-val">332–352 pax</span>
+                <span class="spec-label" style="font-size:0.7rem;">Max 440</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">MTOW</span>
+                <span class="spec-val">283 tonnes</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Engine</span>
+                <span class="spec-val">Trent XWB-84</span>
+              </div>
+            </div>
+            <button class="aircraft-action-btn" onclick="openSpecModal('a350-900')">
+              <span>View Specifications</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- Airbus A350-1000 -->
+          <div class="glass-card aircraft-card reveal-on-scroll" data-category="widebody airbus">
+            <div class="aircraft-visual-header">
+              <span class="aircraft-tag-badge">WIDE-BODY</span>
+              <svg class="aircraft-silhouette-svg" viewBox="0 0 200 80">
+                <path d="M15 40 Q75 38 135 37 Q175 38 188 40 Q175 42 135 43 Q75 42 15 40 Z"/>
+                <path d="M92 39 L148 8 L158 9 L118 39 Z"/>
+                <path d="M92 41 L148 72 L158 71 L118 41 Z"/>
+                <circle cx="110" cy="30" r="5" fill="rgba(0,240,255,0.4)"/>
+                <circle cx="110" cy="50" r="5" fill="rgba(0,240,255,0.4)"/>
+              </svg>
+            </div>
+            <div class="aircraft-mfg">Airbus</div>
+            <h3 class="aircraft-name">Airbus A350-1000</h3>
+            <div class="aircraft-specs-list">
+              <div class="spec-item">
+                <span class="spec-label">Range</span>
+                <span class="spec-val accent">9,100 NM</span>
+                <span class="spec-label" style="font-size:0.7rem;">16,850 km</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Capacity</span>
+                <span class="spec-val">375–400 pax</span>
+                <span class="spec-label" style="font-size:0.7rem;">Max 480</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">MTOW</span>
+                <span class="spec-val">324 tonnes</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Engine</span>
+                <span class="spec-val">Trent XWB-97</span>
+              </div>
+            </div>
+            <button class="aircraft-action-btn" onclick="openSpecModal('a350-1000')">
+              <span>View Specifications</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- Airbus A380 -->
+          <div class="glass-card aircraft-card reveal-on-scroll" data-category="widebody airbus">
+            <div class="aircraft-visual-header">
+              <span class="aircraft-tag-badge">DOUBLE-DECK</span>
+              <svg class="aircraft-silhouette-svg" viewBox="0 0 200 80">
+                <path d="M20 40 Q65 35 120 35 Q160 36 178 40 Q160 44 120 45 Q65 45 20 40 Z"/>
+                <path d="M75 38 L140 5 L150 7 L105 38 Z"/>
+                <path d="M75 42 L140 75 L150 73 L105 42 Z"/>
+                <circle cx="95" cy="25" r="4.5" fill="rgba(0,240,255,0.4)"/>
+                <circle cx="120" cy="18" r="4.5" fill="rgba(0,240,255,0.4)"/>
+                <circle cx="95" cy="55" r="4.5" fill="rgba(0,240,255,0.4)"/>
+                <circle cx="120" cy="62" r="4.5" fill="rgba(0,240,255,0.4)"/>
+              </svg>
+            </div>
+            <div class="aircraft-mfg">Airbus</div>
+            <h3 class="aircraft-name">Airbus A380</h3>
+            <div class="aircraft-specs-list">
+              <div class="spec-item">
+                <span class="spec-label">Range</span>
+                <span class="spec-val accent">~8,000 NM</span>
+                <span class="spec-label" style="font-size:0.7rem;">~14,800 km</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Max Seating</span>
+                <span class="spec-val">853 pax</span>
+                <span class="spec-label" style="font-size:0.7rem;">Full Double-Deck</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Wingspan</span>
+                <span class="spec-val">~80 metres</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Engines</span>
+                <span class="spec-val">4x Trent 900/GP7000</span>
+              </div>
+            </div>
+            <button class="aircraft-action-btn" onclick="openSpecModal('a380')">
+              <span>View Specifications</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- Boeing 777-300ER -->
+          <div class="glass-card aircraft-card reveal-on-scroll" data-category="widebody boeing">
+            <div class="aircraft-visual-header">
+              <span class="aircraft-tag-badge">WIDE-BODY</span>
+              <svg class="aircraft-silhouette-svg" viewBox="0 0 200 80">
+                <path d="M15 40 Q75 38 135 37 Q175 38 185 40 Q175 42 135 43 Q75 42 15 40 Z"/>
+                <path d="M85 39 L145 10 L155 12 L110 39 Z"/>
+                <path d="M85 41 L145 70 L155 68 L110 41 Z"/>
+                <circle cx="105" cy="30" r="6" fill="rgba(0,240,255,0.4)"/>
+                <circle cx="105" cy="50" r="6" fill="rgba(0,240,255,0.4)"/>
+              </svg>
+            </div>
+            <div class="aircraft-mfg">Boeing</div>
+            <h3 class="aircraft-name">Boeing 777-300ER</h3>
+            <div class="aircraft-specs-list">
+              <div class="spec-item">
+                <span class="spec-label">Range</span>
+                <span class="spec-val accent">~7,370 NM</span>
+                <span class="spec-label" style="font-size:0.7rem;">~13,649 km</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Engine</span>
+                <span class="spec-val">GE90-115B</span>
+                <span class="spec-label" style="font-size:0.7rem;">High-thrust twin</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Role</span>
+                <span class="spec-val">High Capacity</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Operators</span>
+                <span class="spec-val">7 Core Airlines</span>
+              </div>
+            </div>
+            <button class="aircraft-action-btn" onclick="openSpecModal('777-300er')">
+              <span>View Specifications</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- Boeing 777-200LR -->
+          <div class="glass-card aircraft-card reveal-on-scroll" data-category="widebody boeing">
+            <div class="aircraft-visual-header">
+              <span class="aircraft-tag-badge">ULTRA-LONG-HAUL</span>
+              <svg class="aircraft-silhouette-svg" viewBox="0 0 200 80">
+                <path d="M25 40 Q75 38 125 37 Q165 38 180 40 Q165 42 125 43 Q75 42 25 40 Z"/>
+                <path d="M85 39 L145 10 L155 12 L110 39 Z"/>
+                <path d="M85 41 L145 70 L155 68 L110 41 Z"/>
+                <circle cx="105" cy="30" r="6" fill="rgba(0,240,255,0.4)"/>
+                <circle cx="105" cy="50" r="6" fill="rgba(0,240,255,0.4)"/>
+              </svg>
+            </div>
+            <div class="aircraft-mfg">Boeing</div>
+            <h3 class="aircraft-name">Boeing 777-200LR</h3>
+            <div class="aircraft-specs-list">
+              <div class="spec-item">
+                <span class="spec-label">Range</span>
+                <span class="spec-val accent">~8,555 NM</span>
+                <span class="spec-label" style="font-size:0.7rem;">~15,843 km</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Engine</span>
+                <span class="spec-val">GE90-110B1</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Role</span>
+                <span class="spec-val">Ultra-Long-Haul</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Key Carriers</span>
+                <span class="spec-val">Air India, Qatar</span>
+              </div>
+            </div>
+            <button class="aircraft-action-btn" onclick="openSpecModal('777-200lr')">
+              <span>View Specifications</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- Boeing 737 MAX 8 -->
+          <div class="glass-card aircraft-card reveal-on-scroll" data-category="narrowbody boeing">
+            <div class="aircraft-visual-header">
+              <span class="aircraft-tag-badge">NARROW-BODY</span>
+              <svg class="aircraft-silhouette-svg" viewBox="0 0 200 80">
+                <path d="M35 40 Q75 38 120 38 Q155 39 170 40 Q155 41 120 42 Q75 42 35 40 Z"/>
+                <path d="M90 39 L135 15 L143 17 L110 39 Z"/>
+                <path d="M90 41 L135 65 L143 63 L110 41 Z"/>
+                <circle cx="105" cy="33" r="4" fill="rgba(0,240,255,0.4)"/>
+                <circle cx="105" cy="47" r="4" fill="rgba(0,240,255,0.4)"/>
+              </svg>
+            </div>
+            <div class="aircraft-mfg">Boeing</div>
+            <h3 class="aircraft-name">Boeing 737 MAX 8 (737-8)</h3>
+            <div class="aircraft-specs-list">
+              <div class="spec-item">
+                <span class="spec-label">Range</span>
+                <span class="spec-val accent">3,500 NM</span>
+                <span class="spec-label" style="font-size:0.7rem;">6,480 km</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Seating</span>
+                <span class="spec-val">160–180 pax</span>
+                <span class="spec-label" style="font-size:0.7rem;">Max 210</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">MTOW</span>
+                <span class="spec-val">82,640 kg</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Engine</span>
+                <span class="spec-val">LEAP-1B</span>
+              </div>
+            </div>
+            <button class="aircraft-action-btn" onclick="openSpecModal('737-max8')">
+              <span>View Specifications</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- Airbus A320neo -->
+          <div class="glass-card aircraft-card reveal-on-scroll" data-category="narrowbody airbus">
+            <div class="aircraft-visual-header">
+              <span class="aircraft-tag-badge">NARROW-BODY</span>
+              <svg class="aircraft-silhouette-svg" viewBox="0 0 200 80">
+                <path d="M35 40 Q75 38 120 38 Q155 39 170 40 Q155 41 120 42 Q75 42 35 40 Z"/>
+                <path d="M88 39 L135 15 L143 17 L108 39 Z"/>
+                <path d="M88 41 L135 65 L143 63 L108 41 Z"/>
+                <circle cx="104" cy="33" r="4.2" fill="rgba(0,240,255,0.4)"/>
+                <circle cx="104" cy="47" r="4.2" fill="rgba(0,240,255,0.4)"/>
+              </svg>
+            </div>
+            <div class="aircraft-mfg">Airbus</div>
+            <h3 class="aircraft-name">Airbus A320neo</h3>
+            <div class="aircraft-specs-list">
+              <div class="spec-item">
+                <span class="spec-label">Range</span>
+                <span class="spec-val accent">3,400 NM</span>
+                <span class="spec-label" style="font-size:0.7rem;">6,300 km</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Capacity</span>
+                <span class="spec-val">150–180 pax</span>
+                <span class="spec-label" style="font-size:0.7rem;">Max 194</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">MTOW</span>
+                <span class="spec-val">79 tonnes</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Engines</span>
+                <span class="spec-val">CFM / Pratt & Whitney</span>
+              </div>
+            </div>
+            <button class="aircraft-action-btn" onclick="openSpecModal('a320neo')">
+              <span>View Specifications</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION C: AIRLINE INTELLIGENCE -->
+    <section class="section-wrap" id="airlines">
+      <div class="site-container">
+        <div class="section-header reveal-on-scroll">
+          <div class="section-kicker">Global Airline Registry</div>
+          <h2 class="section-title">Global Airlines. One Intelligence Layer.</h2>
+          <p class="section-desc">Indexed fleet compositions, operational hubs, and cross-fleet associations from 8 tier-one carriers.</p>
+        </div>
+
+        <div class="airlines-grid">
+          
+          <!-- Emirates -->
+          <div class="glass-card airline-card reveal-on-scroll">
+            <div>
+              <div class="airline-header">
+                <span class="airline-country-badge">UAE</span>
+                <span style="font-size:0.7rem; color:var(--text-tertiary);">HUB: DXB</span>
+              </div>
+              <h3 class="airline-name">Emirates</h3>
+              <div class="airline-hub">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line></svg>
+                <span>Dubai International Airport</span>
+              </div>
+              <div class="airline-fleet-stats">
+                <div class="fleet-row">
+                  <span class="fleet-label">Total Fleet:</span>
+                  <span class="fleet-val">277 aircraft</span>
+                </div>
+                <div class="fleet-row">
+                  <span class="fleet-label">A350 in Fleet:</span>
+                  <span class="fleet-val">19 aircraft</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="airline-fleet-tags">
+                <span class="fleet-tag">A380</span>
+                <span class="fleet-tag">A350</span>
+                <span class="fleet-tag">Boeing 777</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Qatar Airways -->
+          <div class="glass-card airline-card reveal-on-scroll">
+            <div>
+              <div class="airline-header">
+                <span class="airline-country-badge">QATAR</span>
+                <span style="font-size:0.7rem; color:var(--text-tertiary);">HUB: DOH</span>
+              </div>
+              <h3 class="airline-name">Qatar Airways</h3>
+              <div class="airline-hub">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line></svg>
+                <span>Hamad International Airport</span>
+              </div>
+              <div class="airline-fleet-stats">
+                <div class="fleet-row">
+                  <span class="fleet-label">Fleet Profile:</span>
+                  <span class="fleet-val">Global Long-Haul</span>
+                </div>
+                <div class="fleet-row">
+                  <span class="fleet-label">Flagship:</span>
+                  <span class="fleet-val">A350-1000 / B777</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="airline-fleet-tags">
+                <span class="fleet-tag">A350-900/1000</span>
+                <span class="fleet-tag">A380</span>
+                <span class="fleet-tag">787-9</span>
+                <span class="fleet-tag">777-300ER</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Etihad Airways -->
+          <div class="glass-card airline-card reveal-on-scroll">
+            <div>
+              <div class="airline-header">
+                <span class="airline-country-badge">UAE</span>
+                <span style="font-size:0.7rem; color:var(--text-tertiary);">HUB: AUH</span>
+              </div>
+              <h3 class="airline-name">Etihad Airways</h3>
+              <div class="airline-hub">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line></svg>
+                <span>Abu Dhabi International</span>
+              </div>
+              <div class="airline-fleet-stats">
+                <div class="fleet-row">
+                  <span class="fleet-label">Total Fleet:</span>
+                  <span class="fleet-val">128 aircraft</span>
+                </div>
+                <div class="fleet-row">
+                  <span class="fleet-label">B787 Strength:</span>
+                  <span class="fleet-val">48 Dreamliners</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="airline-fleet-tags">
+                <span class="fleet-tag">787-9/10</span>
+                <span class="fleet-tag">A350</span>
+                <span class="fleet-tag">A380</span>
+                <span class="fleet-tag">777-300ER</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Singapore Airlines -->
+          <div class="glass-card airline-card reveal-on-scroll">
+            <div>
+              <div class="airline-header">
+                <span class="airline-country-badge">SINGAPORE</span>
+                <span style="font-size:0.7rem; color:var(--text-tertiary);">HUB: SIN</span>
+              </div>
+              <h3 class="airline-name">Singapore Airlines</h3>
+              <div class="airline-hub">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line></svg>
+                <span>Singapore Changi Airport</span>
+              </div>
+              <div class="airline-fleet-stats">
+                <div class="fleet-row">
+                  <span class="fleet-label">Passenger Fleet:</span>
+                  <span class="fleet-val">144 aircraft</span>
+                </div>
+                <div class="fleet-row">
+                  <span class="fleet-label">A350 Backbone:</span>
+                  <span class="fleet-val">65 aircraft</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="airline-fleet-tags">
+                <span class="fleet-tag">A350-900 (65)</span>
+                <span class="fleet-tag">787-10 (26)</span>
+                <span class="fleet-tag">777-300ER</span>
+                <span class="fleet-tag">A380</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lufthansa -->
+          <div class="glass-card airline-card reveal-on-scroll">
+            <div>
+              <div class="airline-header">
+                <span class="airline-country-badge">GERMANY</span>
+                <span style="font-size:0.7rem; color:var(--text-tertiary);">HUBS: FRA/MUC</span>
+              </div>
+              <h3 class="airline-name">Lufthansa</h3>
+              <div class="airline-hub">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line></svg>
+                <span>Frankfurt & Munich Airports</span>
+              </div>
+              <div class="airline-fleet-stats">
+                <div class="fleet-row">
+                  <span class="fleet-label">Fleet Profile:</span>
+                  <span class="fleet-val">European & Intercon</span>
+                </div>
+                <div class="fleet-row">
+                  <span class="fleet-label">Unique Type:</span>
+                  <span class="fleet-val">Boeing 747-8</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="airline-fleet-tags">
+                <span class="fleet-tag">A350-900</span>
+                <span class="fleet-tag">A380-800</span>
+                <span class="fleet-tag">747-8</span>
+                <span class="fleet-tag">787-9</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- British Airways -->
+          <div class="glass-card airline-card reveal-on-scroll">
+            <div>
+              <div class="airline-header">
+                <span class="airline-country-badge">UNITED KINGDOM</span>
+                <span style="font-size:0.7rem; color:var(--text-tertiary);">HUB: LHR</span>
+              </div>
+              <h3 class="airline-name">British Airways</h3>
+              <div class="airline-hub">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line></svg>
+                <span>London Heathrow Airport</span>
+              </div>
+              <div class="airline-fleet-stats">
+                <div class="fleet-row">
+                  <span class="fleet-label">Network:</span>
+                  <span class="fleet-val">Global Premium</span>
+                </div>
+                <div class="fleet-row">
+                  <span class="fleet-label">Fleet Diversity:</span>
+                  <span class="fleet-val">Airbus & Boeing</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="airline-fleet-tags">
+                <span class="fleet-tag">A350-1000</span>
+                <span class="fleet-tag">A380</span>
+                <span class="fleet-tag">787-8/9/10</span>
+                <span class="fleet-tag">777</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Air India -->
+          <div class="glass-card airline-card reveal-on-scroll">
+            <div>
+              <div class="airline-header">
+                <span class="airline-country-badge">INDIA</span>
+                <span style="font-size:0.7rem; color:var(--text-tertiary);">HUBS: DEL/BOM</span>
+              </div>
+              <h3 class="airline-name">Air India</h3>
+              <div class="airline-hub">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line></svg>
+                <span>Delhi & Mumbai Hubs</span>
+              </div>
+              <div class="airline-fleet-stats">
+                <div class="fleet-row">
+                  <span class="fleet-label">Fleet Size:</span>
+                  <span class="fleet-val">184 aircraft</span>
+                </div>
+                <div class="fleet-row">
+                  <span class="fleet-label">Modernization:</span>
+                  <span class="fleet-val">A350-900 In Service</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="airline-fleet-tags">
+                <span class="fleet-tag">A350-900</span>
+                <span class="fleet-tag">777-200LR/300ER</span>
+                <span class="fleet-tag">787-8/9</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Turkish Airlines -->
+          <div class="glass-card airline-card reveal-on-scroll">
+            <div>
+              <div class="airline-header">
+                <span class="airline-country-badge">TÜRKİYE</span>
+                <span style="font-size:0.7rem; color:var(--text-tertiary);">HUB: IST</span>
+              </div>
+              <h3 class="airline-name">Turkish Airlines</h3>
+              <div class="airline-hub">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line></svg>
+                <span>Istanbul Airport</span>
+              </div>
+              <div class="airline-fleet-stats">
+                <div class="fleet-row">
+                  <span class="fleet-label">Reach:</span>
+                  <span class="fleet-val">Most Countries Worldwide</span>
+                </div>
+                <div class="fleet-row">
+                  <span class="fleet-label">Wide-Body:</span>
+                  <span class="fleet-val">A350 & 787 Fleet</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="airline-fleet-tags">
+                <span class="fleet-tag">A350-900</span>
+                <span class="fleet-tag">787-9 Dreamliner</span>
+                <span class="fleet-tag">777-300ER</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION D: HOW AEROINTEL WORKS (8-Step RAG Architecture Flow) -->
+    <section class="section-wrap" id="how-it-works">
+      <div class="site-container">
+        <div class="section-header reveal-on-scroll">
+          <div class="section-kicker">Retrieval-Augmented Generation Pipeline</div>
+          <h2 class="section-title">From Aviation Documents to Intelligent Answers</h2>
+          <p class="section-desc">A step-by-step trace of how AeroIntel transforms verified aviation documents into authoritative natural-language intelligence.</p>
+        </div>
+
+        <div class="pipeline-wrapper">
+          <div class="pipeline-grid">
+            
+            <!-- Step 1 -->
+            <div class="glass-card pipeline-step-card reveal-on-scroll">
+              <div class="step-badge">01</div>
+              <h3 class="step-title">Aviation Knowledge</h3>
+              <p class="step-desc">17 official source documents covering 9 aircraft models and 8 airlines loaded from authoritative records.</p>
+              <div class="step-connector"></div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="glass-card pipeline-step-card reveal-on-scroll">
+              <div class="step-badge">02</div>
+              <h3 class="step-title">Document Processing</h3>
+              <p class="step-desc">Raw texts parsed, validated, and normalized to extract structural metadata (aircraft, airline, manufacturer).</p>
+              <div class="step-connector"></div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="glass-card pipeline-step-card reveal-on-scroll">
+              <div class="step-badge">03</div>
+              <h3 class="step-title">Text Chunking</h3>
+              <p class="step-desc">Deterministic chunking creates 48 structured knowledge passages with stable hash IDs and metadata tagging.</p>
+              <div class="step-connector"></div>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="glass-card pipeline-step-card reveal-on-scroll">
+              <div class="step-badge">04</div>
+              <h3 class="step-title">Embedding Generation</h3>
+              <p class="step-desc">Hugging Face sentence-transformers model maps each passage into dense 384-dimensional semantic vectors.</p>
+            </div>
+
+            <!-- Step 5 -->
+            <div class="glass-card pipeline-step-card reveal-on-scroll">
+              <div class="step-badge">05</div>
+              <h3 class="step-title">Pinecone Vector DB</h3>
+              <p class="step-desc">Vectors indexed in Pinecone (<code>aerointel-v2</code>) with cosine metric and metadata filtering for fast search.</p>
+              <div class="step-connector"></div>
+            </div>
+
+            <!-- Step 6 -->
+            <div class="glass-card pipeline-step-card reveal-on-scroll">
+              <div class="step-badge">06</div>
+              <h3 class="step-title">Semantic Retrieval</h3>
+              <p class="step-desc">MCP toolset triggers filtered queries (<code>search_aircraft</code>, <code>search_airline</code>) returning relevant evidence passages.</p>
+              <div class="step-connector"></div>
+            </div>
+
+            <!-- Step 7 -->
+            <div class="glass-card pipeline-step-card reveal-on-scroll">
+              <div class="step-badge">07</div>
+              <h3 class="step-title">LLM Response Gen</h3>
+              <p class="step-desc">Google Gemini primary/fallback via ADK constructs grounded answers citing retrieved evidence strictly.</p>
+              <div class="step-connector"></div>
+            </div>
+
+            <!-- Step 8 -->
+            <div class="glass-card pipeline-step-card reveal-on-scroll">
+              <div class="step-badge">08</div>
+              <h3 class="step-title">User Receives Answer</h3>
+              <p class="step-desc">Synthesized, fact-checked response delivered via REST API and persisted in PostgreSQL session history.</p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION E: ARCHITECTURE (AI Engineering Stack) -->
+    <section class="section-wrap" id="architecture">
+      <div class="site-container">
+        <div class="section-header reveal-on-scroll">
+          <div class="section-kicker">Production Infrastructure</div>
+          <h2 class="section-title">Built on a Modern AI Engineering Stack</h2>
+          <p class="section-desc">Enterprise-grade architecture spanning containerized microservices, vector storage, and agentic orchestration.</p>
+        </div>
+
+        <div class="tech-stack-container reveal-on-scroll">
+          <div class="stack-layers">
+            
+            <!-- Layer 1: Serving & Ingestion -->
+            <div class="stack-layer">
+              <div class="layer-heading">
+                <span>01 // APPLICATION & API SERVING LAYER</span>
+              </div>
+              <div class="tech-badges-grid">
+                <div class="tech-pill">
+                  <div class="tech-icon-wrap">Py</div>
+                  <div class="tech-info">
+                    <span class="tech-name">Python 3.11</span>
+                    <span class="tech-role">Core runtime & typing</span>
+                  </div>
+                </div>
+                <div class="tech-pill">
+                  <div class="tech-icon-wrap">⚡</div>
+                  <div class="tech-info">
+                    <span class="tech-name">FastAPI</span>
+                    <span class="tech-role">REST API & OAuth2</span>
+                  </div>
+                </div>
+                <div class="tech-pill">
+                  <div class="tech-icon-wrap">🔒</div>
+                  <div class="tech-info">
+                    <span class="tech-name">Argon2 + JWT</span>
+                    <span class="tech-role">Cryptographic auth</span>
+                  </div>
+                </div>
+                <div class="tech-pill">
+                  <div class="tech-icon-wrap">🗄️</div>
+                  <div class="tech-info">
+                    <span class="tech-name">PostgreSQL 16</span>
+                    <span class="tech-role">SQLAlchemy & Alembic</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Layer 2: Vector Intelligence -->
+            <div class="stack-layer">
+              <div class="layer-heading">
+                <span>02 // VECTOR STORAGE & EMBEDDINGS</span>
+              </div>
+              <div class="tech-badges-grid">
+                <div class="tech-pill">
+                  <div class="tech-icon-wrap">🌲</div>
+                  <div class="tech-info">
+                    <span class="tech-name">Pinecone</span>
+                    <span class="tech-role">Vector DB (aerointel-v2)</span>
+                  </div>
+                </div>
+                <div class="tech-pill">
+                  <div class="tech-icon-wrap">🤗</div>
+                  <div class="tech-info">
+                    <span class="tech-name">Hugging Face</span>
+                    <span class="tech-role">sentence-transformers</span>
+                  </div>
+                </div>
+                <div class="tech-pill">
+                  <div class="tech-icon-wrap">📐</div>
+                  <div class="tech-info">
+                    <span class="tech-name">384-Dim Vectors</span>
+                    <span class="tech-role">Cosine similarity space</span>
+                  </div>
+                </div>
+                <div class="tech-pill">
+                  <div class="tech-icon-wrap">📑</div>
+                  <div class="tech-info">
+                    <span class="tech-name">48 Vector Chunks</span>
+                    <span class="tech-role">17 authoritative files</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Layer 3: Agentic Reasoning & LLM -->
+            <div class="stack-layer">
+              <div class="layer-heading">
+                <span>03 // AGENTIC ORCHESTRATION & LLM</span>
+              </div>
+              <div class="tech-badges-grid">
+                <div class="tech-pill">
+                  <div class="tech-icon-wrap">🤖</div>
+                  <div class="tech-info">
+                    <span class="tech-name">Google ADK</span>
+                    <span class="tech-role">Agent Development Kit</span>
+                  </div>
+                </div>
+                <div class="tech-pill">
+                  <div class="tech-icon-wrap">✨</div>
+                  <div class="tech-info">
+                    <span class="tech-name">Gemini Models</span>
+                    <span class="tech-role">Primary 3.8 / Fallback 3.6</span>
+                  </div>
+                </div>
+                <div class="tech-pill">
+                  <div class="tech-icon-wrap">🔌</div>
+                  <div class="tech-info">
+                    <span class="tech-name">MCP Protocol</span>
+                    <span class="tech-role">Stdio toolset bridge</span>
+                  </div>
+                </div>
+                <div class="tech-pill">
+                  <div class="tech-icon-wrap">🛡️</div>
+                  <div class="tech-info">
+                    <span class="tech-name">Grounding Rules</span>
+                    <span class="tech-role">Zero-hallucination guard</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Layer 4: Infrastructure & DevOps -->
+            <div class="stack-layer">
+              <div class="layer-heading">
+                <span>04 // CONTAINERIZATION & DEPLOYMENT</span>
+              </div>
+              <div class="tech-badges-grid">
+                <div class="tech-pill">
+                  <div class="tech-icon-wrap">🐳</div>
+                  <div class="tech-info">
+                    <span class="tech-name">Docker</span>
+                    <span class="tech-role">Non-root production image</span>
+                  </div>
+                </div>
+                <div class="tech-pill">
+                  <div class="tech-icon-wrap">☁️</div>
+                  <div class="tech-info">
+                    <span class="tech-name">AWS EC2 & RDS</span>
+                    <span class="tech-role">Isolated cloud hosting</span>
+                  </div>
+                </div>
+                <div class="tech-pill">
+                  <div class="tech-icon-wrap">🚀</div>
+                  <div class="tech-info">
+                    <span class="tech-name">GitHub Actions</span>
+                    <span class="tech-role">Automated CI test suite</span>
+                  </div>
+                </div>
+                <div class="tech-pill">
+                  <div class="tech-icon-wrap">📊</div>
+                  <div class="tech-info">
+                    <span class="tech-name">Observability</span>
+                    <span class="tech-role">Correlation IDs & logging</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION F: INTERACTIVE AI DEMONSTRATION -->
+    <section class="section-wrap" id="demo">
+      <div class="site-container">
+        <div class="section-header reveal-on-scroll">
+          <div class="section-kicker">Interactive Live Preview</div>
+          <h2 class="section-title">Ask Aviation Anything</h2>
+          <p class="section-desc">Experience AeroIntel's conversational aviation intelligence. Select a prompt or ask your own question.</p>
+        </div>
+
+        <div class="chat-demo-container reveal-on-scroll">
+          <!-- Chat Header -->
+          <div class="chat-demo-header">
+            <div class="chat-assistant-meta">
+              <div class="assistant-avatar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 19 21 12 17 5 21 12 2"></polygon></svg>
+              </div>
+              <div class="assistant-details">
+                <h4>AeroIntel Assistant</h4>
+                <span class="assistant-status">RAG Engine Online (Demo Mode)</span>
+              </div>
+            </div>
+            <div>
+              <button class="chat-config-btn" onclick="openApiModal()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                <span>API Settings</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Suggested Questions Row -->
+          <div class="suggested-questions-row">
+            <button class="question-chip" onclick="askPreset('What is the difference between the Boeing 787-9 and 787-10?')">Difference: 787-9 vs 787-10</button>
+            <button class="question-chip" onclick="askPreset('Compare the Airbus A350-1000 and Boeing 777-300ER.')">Compare A350-1000 & 777-300ER</button>
+            <button class="question-chip" onclick="askPreset('Which airlines operate the Airbus A380?')">Who operates the Airbus A380?</button>
+            <button class="question-chip" onclick="askPreset('Explain the Boeing 737 MAX 8 specifications.')">Boeing 737 MAX 8 specs</button>
+          </div>
+
+          <!-- Chat Viewport -->
+          <div class="chat-viewport" id="chat-messages">
+            <!-- Initial AI Greeting -->
+            <div class="chat-message ai">
+              <div class="msg-bubble">
+                <p>Hello! I am <strong>AeroIntel</strong>, your AI aviation research assistant. I have direct semantic access to technical specifications for 9 commercial aircraft and 8 major airline fleets.</p>
+                <p style="margin-top:0.5rem; color:var(--text-secondary); font-size:0.875rem;">Click one of the suggested questions above, or type any technical question below.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Typing Indicator -->
+          <div class="typing-indicator" id="chat-typing">
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+          </div>
+
+          <!-- Chat Input -->
+          <form class="chat-input-bar" id="chat-form" onsubmit="handleChatSubmit(event)">
+            <input type="text" id="chat-input-field" class="chat-text-input" placeholder="Ask about aircraft range, passenger capacities, fleet sizes..." autocomplete="off">
+            <button type="submit" class="chat-send-btn" aria-label="Send message">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION G: FINAL CTA -->
+    <section class="cta-section">
+      <div class="site-container">
+        <div class="cta-card reveal-on-scroll">
+          <h2 class="cta-title">Ready to Explore Aviation Intelligence?</h2>
+          <p class="cta-desc">Discover a smarter way to understand aircraft, airlines and the aviation ecosystem with verified semantic retrieval.</p>
+          <a href="#demo" class="btn-white-pill" style="padding: 1rem 2.25rem; font-size: 1rem;">
+            <span>Launch AeroIntel</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER (1650ms animation delay spec) -->
+  <footer class="footer" id="main-footer">
+    <div class="site-container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="footer-brand-logo">
+            <svg class="logo-icon-svg" viewBox="0 0 32 32" fill="none" style="width:1.75rem; height:1.75rem;">
+              <circle cx="16" cy="16" r="15" stroke="rgba(0,240,255,0.4)" stroke-width="1.5" stroke-dasharray="3 3"/>
+              <path d="M16 4L20 14L28 16L20 18L16 28L12 18L4 16L12 14Z" fill="url(#logo-grad-f)"/>
+              <defs>
+                <linearGradient id="logo-grad-f" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#00f0ff"/>
+                  <stop offset="1" stop-color="#0070f3"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <span>AeroIntel</span>
+          </div>
+          <p class="footer-brand-text">AI-powered intelligence for the aviation ecosystem. Transforming unstructured technical sources into authoritative answers.</p>
+        </div>
+
+        <div class="footer-links-group">
+          <div>
+            <div class="footer-col-title">Platform</div>
+            <ul class="footer-links-list">
+              <li class="footer-link-item"><a href="#overview">Overview</a></li>
+              <li class="footer-link-item"><a href="#capabilities">Capabilities</a></li>
+              <li class="footer-link-item"><a href="#how-it-works">Pipeline</a></li>
+              <li class="footer-link-item"><a href="#demo">Live Demo</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer-col-title">Knowledge</div>
+            <ul class="footer-links-list">
+              <li class="footer-link-item"><a href="#aircraft">Aircraft (9)</a></li>
+              <li class="footer-link-item"><a href="#airlines">Airlines (8)</a></li>
+              <li class="footer-link-item"><a href="#architecture">Architecture</a></li>
+              <li class="footer-link-item"><a href="http://localhost:8000/docs" target="_blank">Swagger API</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer-col-title">Documentation</div>
+            <ul class="footer-links-list">
+              <li class="footer-link-item"><a href="https://github.com" target="_blank">GitHub Repository</a></li>
+              <li class="footer-link-item"><a href="#architecture">Docker Setup</a></li>
+              <li class="footer-link-item"><a href="#architecture">Pinecone Specs</a></li>
+              <li class="footer-link-item"><a href="#architecture">ADK Agent</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>© 2026 AeroIntel — Intelligent Aviation Research. All rights reserved.</div>
+        <div class="footer-sys-badge">
+          <span class="sys-dot"></span>
+          <span>Vector Index: aerointel-v2 (384-dim)</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- MODAL: AIRCRAFT SPECIFICATIONS VIEWER -->
+  <div class="modal-overlay" id="spec-modal" onclick="closeSpecModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <button class="modal-close-btn" onclick="closeSpecModalDirect()">✕</button>
+      <div id="modal-spec-content">
+        <!-- Loaded dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: API CONFIGURATION (Direct FastAPI Connection) -->
+  <div class="modal-overlay" id="api-modal" onclick="closeApiModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <button class="modal-close-btn" onclick="closeApiModalDirect()">✕</button>
+      <h3 style="font-size:1.375rem; margin-bottom:0.75rem; color:#fff;">AeroIntel API Connectivity</h3>
+      <p style="font-size:0.875rem; color:var(--text-secondary); margin-bottom:1.5rem; line-height:1.6;">
+        You can connect this interactive interface directly to your running FastAPI backend or test against authentic local simulation.
+      </p>
+      
+      <div style="margin-bottom:1.25rem;">
+        <label style="display:block; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent-cyan); margin-bottom:0.5rem;">API Base URL</label>
+        <input type="text" id="api-base-url" value="http://127.0.0.1:8000" style="width:100%; padding:0.75rem 1rem; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:var(--radius-inner); color:#fff; font-family:monospace; font-size:0.875rem;">
+      </div>
+
+      <div style="margin-bottom:1.5rem;">
+        <label style="display:block; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent-cyan); margin-bottom:0.5rem;">JWT Bearer Token (Optional if unauthenticated)</label>
+        <input type="password" id="api-jwt-token" placeholder="Paste access_token from /auth/login or Swagger" style="width:100%; padding:0.75rem 1rem; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:var(--radius-inner); color:#fff; font-family:monospace; font-size:0.875rem;">
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span id="api-status-ping" style="font-size:0.8125rem; color:var(--text-tertiary);">Mode: Smart Local Demonstration</span>
+        <button class="btn-white-pill" style="padding:0.6rem 1.25rem; font-size:0.875rem;" onclick="testAndSaveApiConfig()">Save Configuration</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       JAVASCRIPT: WEBGL FLUID SIMULATION, THREE.JS AIRCRAFT, LENIS, ANIMATIONS
+       ========================================================================== -->
+  <script>
+    /* ==========================================================================
+       1. LENIS SMOOTH SCROLLING
+       ========================================================================== */
+    let lenis;
+    if (typeof Lenis !== 'undefined') {
+      lenis = new Lenis({
+        duration: 1.2,
+        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        orientation: 'vertical',
+        smoothWheel: true,
+        wheelMultiplier: 1.0,
+      });
+
+      function raf(time) {
+        lenis.raf(time);
+        requestAnimationFrame(raf);
+      }
+      requestAnimationFrame(raf);
+    }
+
+    /* ==========================================================================
+       2. FLOWSTATE EXACT ENTRANCE ANIMATIONS & TIMINGS
+       - Navigation: 150ms
+       - Badge: 320ms
+       - Heading: 480ms, 85ms word stagger, 720ms duration
+       - Subtitle: 1150ms, 22ms word stagger, 600ms duration
+       - Main CTA: 1450ms
+       - Footer: 1650ms
+       ========================================================================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      // 1. Navigation Entrance (150ms)
+      setTimeout(() => {
+        const nav = document.getElementById('main-nav');
+        if (nav) nav.classList.add('animate-in');
+      }, 150);
+
+      // 2. Badge Entrance (320ms)
+      setTimeout(() => {
+        const badge = document.getElementById('hero-badge');
+        if (badge) badge.classList.add('animate-in');
+      }, 320);
+
+      // 3. Heading Word-by-Word Reveal (480ms start, 85ms stagger, 720ms duration)
+      const headingWords = document.querySelectorAll('#hero-heading .word-inner');
+      headingWords.forEach((word, index) => {
+        setTimeout(() => {
+          word.classList.add('animate-in');
+        }, 480 + (index * 85));
+      });
+
+      // 4. Subtitle Word-by-Word Reveal (1150ms start, 22ms stagger, 600ms duration)
+      const subtitleEl = document.getElementById('hero-subtitle');
+      if (subtitleEl) {
+        const rawText = subtitleEl.innerText.trim();
+        const words = rawText.split(/\s+/);
+        subtitleEl.innerHTML = words.map(w => `<span class="sub-word-wrap"><span class="sub-word-inner">${w}</span></span>`).join(' ');
+        
+        const subWords = subtitleEl.querySelectorAll('.sub-word-inner');
+        subWords.forEach((wSpan, idx) => {
+          setTimeout(() => {
+            wSpan.classList.add('animate-in');
+          }, 1150 + (idx * 22));
+        });
+      }
+
+      // 5. Main CTA Entrance (1450ms)
+      setTimeout(() => {
+        const cta = document.getElementById('hero-cta');
+        if (cta) cta.classList.add('animate-in');
+      }, 1450);
+
+      // 6. Footer Entrance (1650ms)
+      setTimeout(() => {
+        const footer = document.getElementById('main-footer');
+        if (footer) footer.classList.add('animate-in');
+      }, 1650);
+
+      // Scroll Reveal for Lower Sections
+      initScrollReveal();
+    });
+
+    function initScrollReveal() {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-revealed');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12 });
+
+      document.querySelectorAll('.reveal-on-scroll').forEach(el => observer.observe(el));
+    }
+
+    /* ==========================================================================
+       3. ORIGINAL WEBGL FLUID SIMULATION
+       Load burst, pointer drag vortex, continuous advection, cyan/blue/magenta palette
+       ========================================================================== */
+    (function initFluidSimulation() {
+      const canvas = document.getElementById('fluid-canvas');
+      if (!canvas) return;
+
+      const gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false });
+      if (!gl) return;
+
+      let width = canvas.width = window.innerWidth;
+      let height = canvas.height = window.innerHeight;
+
+      window.addEventListener('resize', () => {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        gl.viewport(0, 0, width, height);
+      });
+
+      // Simulation Shader Programs
+      const baseVertexShader = `
+        attribute vec2 aPosition;
+        varying vec2 vUv;
+        void main() {
+          vUv = aPosition * 0.5 + 0.5;
+          gl_Position = vec4(aPosition, 0.0, 1.0);
+        }
+      `;
+
+      // Procedural WebGL Fluid Advection & Vortices with AeroIntel Palette
+      const fluidFragmentShader = `
+        precision highp float;
+        varying vec2 vUv;
+        uniform float uTime;
+        uniform vec2 uPointer;
+        uniform vec2 uVelocity;
+        uniform vec2 uResolution;
+        uniform float uBurst;
+
+        // Simplex Noise helpers
+        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+
+        float snoise(vec2 v) {
+          const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
+          vec2 i  = floor(v + dot(v, C.yy));
+          vec2 x0 = v -   i + dot(i, C.xx);
+          vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+          vec4 x12 = x0.xyxy + C.xxzz;
+          x12.xy -= i1;
+          i = mod289(i);
+          vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+          vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+          m = m*m;
+          m = m*m;
+          vec3 x = 2.0 * fract(p * C.www) - 1.0;
+          vec3 h = abs(x) - 0.5;
+          vec3 ox = floor(x + 0.5);
+          vec3 a0 = x - ox;
+          m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+          vec3 g;
+          g.x  = a0.x  * x0.x  + h.x  * x0.y;
+          g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+          return 130.0 * dot(m, g);
+        }
+
+        void main() {
+          vec2 st = gl_FragCoord.xy / uResolution.xy;
+          float aspect = uResolution.x / uResolution.y;
+          vec2 p = st;
+          p.x *= aspect;
+
+          // Mouse vortex distortion
+          vec2 pointerPos = uPointer;
+          pointerPos.x *= aspect;
+          float dist = distance(p, pointerPos);
+          float influence = smoothstep(0.4, 0.0, dist);
+
+          // Animated fluid fields
+          float t = uTime * 0.12;
+          float n1 = snoise(p * 2.2 + vec2(t * 0.5, -t * 0.3) + (uVelocity * 0.8 * influence));
+          float n2 = snoise(p * 4.5 + vec2(-t * 0.4, t * 0.6) + vec2(n1 * 0.4));
+          float n3 = snoise(p * 1.2 + vec2(n2 * 0.5, t * 0.2));
+
+          // Load burst flare in center
+          vec2 center = vec2(0.5 * aspect, 0.5);
+          float burstDist = distance(p, center);
+          float burstGlow = exp(-burstDist * 3.5) * uBurst;
+
+          // AeroIntel Color Palette: Cyan (#00f0ff), Royal Blue (#0070f3), Violet (#7928ca), Magenta (#ec4899)
+          vec3 colorCyan   = vec3(0.0, 0.94, 1.0);
+          vec3 colorBlue   = vec3(0.0, 0.44, 0.95);
+          vec3 colorViolet = vec3(0.47, 0.15, 0.79);
+          vec3 colorDarkBg = vec3(0.015, 0.02, 0.047); // #04050c
+
+          float blend1 = smoothstep(-0.3, 0.7, n1);
+          float blend2 = smoothstep(-0.2, 0.8, n2);
+
+          vec3 fluidColor = mix(colorDarkBg, colorBlue * 0.45, blend1);
+          fluidColor = mix(fluidColor, colorCyan * 0.6, blend2 * 0.7);
+          fluidColor = mix(fluidColor, colorViolet * 0.5, n3 * 0.4);
+
+          // Add mouse vortex illumination
+          fluidColor += colorCyan * (influence * length(uVelocity) * 2.5);
+          fluidColor += (colorCyan * 0.7 + colorViolet * 0.3) * burstGlow;
+
+          gl_FragColor = vec4(fluidColor, 1.0);
+        }
+      `;
+
+      function createShader(gl, type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        return shader;
+      }
+
+      const program = gl.createProgram();
+      gl.attachShader(program, createShader(gl, gl.VERTEX_SHADER, baseVertexShader));
+      gl.attachShader(program, createShader(gl, gl.FRAGMENT_SHADER, fluidFragmentShader));
+      gl.linkProgram(program);
+      gl.useProgram(program);
+
+      const quadBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        -1, -1,
+         1, -1,
+        -1,  1,
+        -1,  1,
+         1, -1,
+         1,  1
+      ]), gl.STATIC_DRAW);
+
+      const aPosition = gl.getAttribLocation(program, 'aPosition');
+      gl.enableVertexAttribArray(aPosition);
+      gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
+
+      const uTimeLoc       = gl.getUniformLocation(program, 'uTime');
+      const uPointerLoc    = gl.getUniformLocation(program, 'uPointer');
+      const uVelocityLoc   = gl.getUniformLocation(program, 'uVelocity');
+      const uResolutionLoc = gl.getUniformLocation(program, 'uResolution');
+      const uBurstLoc      = gl.getUniformLocation(program, 'uBurst');
+
+      let mouseX = 0.5, mouseY = 0.5;
+      let prevMouseX = 0.5, prevMouseY = 0.5;
+      let velX = 0, velY = 0;
+      let burstAmount = 1.0;
+
+      window.addEventListener('pointermove', (e) => {
+        const curX = e.clientX / window.innerWidth;
+        const curY = 1.0 - (e.clientY / window.innerHeight);
+        velX = (curX - prevMouseX) * 8.0;
+        velY = (curY - prevMouseY) * 8.0;
+        prevMouseX = mouseX = curX;
+        prevMouseY = mouseY = curY;
+      });
+
+      let startTime = performance.now();
+
+      function renderFluid(now) {
+        const elapsed = (now - startTime) * 0.001;
+
+        // Burst decays smoothly
+        burstAmount = Math.max(0.0, burstAmount - 0.008);
+        velX *= 0.92;
+        velY *= 0.92;
+
+        gl.viewport(0, 0, width, height);
+        gl.uniform1f(uTimeLoc, elapsed);
+        gl.uniform2f(uPointerLoc, mouseX, mouseY);
+        gl.uniform2f(uVelocityLoc, velX, velY);
+        gl.uniform2f(uResolutionLoc, width, height);
+        gl.uniform1f(uBurstLoc, burstAmount);
+
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        requestAnimationFrame(renderFluid);
+      }
+
+      requestAnimationFrame(renderFluid);
+    })();
+
+    /* ==========================================================================
+       4. THREE.JS 3D COMMERCIAL PASSENGER AIRCRAFT
+       High-precision Boeing 787 / Airbus A350 visual with metallic materials,
+       rotating turbofan fan blades, navigation beacon strobes, and orbital flight path.
+       ========================================================================== */
+    (function init3DAircraft() {
+      const container = document.getElementById('hero-3d-container');
+      const canvas = document.getElementById('aircraft-canvas');
+      if (!container || !canvas || typeof THREE === 'undefined') return;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 1000);
+      camera.position.set(0, 2, 26);
+
+      const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true, powerPreference: 'high-performance' });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      window.addEventListener('resize', () => {
+        if (!container.clientWidth || !container.clientHeight) return;
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+      });
+
+      // Aviation Lighting
+      const ambientLight = new THREE.AmbientLight(0x0a1628, 2.5);
+      scene.add(ambientLight);
+
+      const keySun = new THREE.DirectionalLight(0xffffff, 2.2);
+      keySun.position.set(20, 30, 25);
+      scene.add(keySun);
+
+      const cyanRim = new THREE.PointLight(0x00f0ff, 4.5, 50);
+      cyanRim.position.set(-15, 10, -10);
+      scene.add(cyanRim);
+
+      const magentaFill = new THREE.PointLight(0x7928ca, 3.0, 45);
+      magentaFill.position.set(12, -10, 10);
+      scene.add(magentaFill);
+
+      // Root Aircraft Group
+      const aircraftGroup = new THREE.Group();
+      scene.add(aircraftGroup);
+
+      // Metallic Aircraft Materials
+      const fuselageMat = new THREE.MeshStandardMaterial({
+        color: 0xe6edf5,
+        metalness: 0.85,
+        roughness: 0.22,
+        envMapIntensity: 1.5
+      });
+
+      const wingMat = new THREE.MeshStandardMaterial({
+        color: 0xcbd5e1,
+        metalness: 0.8,
+        roughness: 0.28
+      });
+
+      const cockpitGlassMat = new THREE.MeshStandardMaterial({
+        color: 0x050e1a,
+        metalness: 0.95,
+        roughness: 0.08
+      });
+
+      const engineMat = new THREE.MeshStandardMaterial({
+        color: 0x334155,
+        metalness: 0.9,
+        roughness: 0.3
+      });
+
+      const cyanAccentMat = new THREE.MeshBasicMaterial({
+        color: 0x00f0ff
+      });
+
+      // 1. Fuselage
+      const fuselageGeo = new THREE.CylinderGeometry(1.2, 0.4, 22, 32);
+      fuselageGeo.rotateZ(Math.PI / 2);
+      const fuselage = new THREE.Mesh(fuselageGeo, fuselageMat);
+      aircraftGroup.add(fuselage);
+
+      // Nose Cone
+      const noseGeo = new THREE.ConeGeometry(1.2, 3.5, 32);
+      noseGeo.rotateZ(-Math.PI / 2);
+      const nose = new THREE.Mesh(noseGeo, fuselageMat);
+      nose.position.set(12.75, 0, 0);
+      aircraftGroup.add(nose);
+
+      // Cockpit Windshield Visor
+      const cockpitGeo = new THREE.BoxGeometry(1.4, 0.7, 1.3);
+      const cockpit = new THREE.Mesh(cockpitGeo, cockpitGlassMat);
+      cockpit.position.set(11.2, 0.65, 0);
+      cockpit.rotation.z = -0.35;
+      aircraftGroup.add(cockpit);
+
+      // 2. Main Swept Wings (Left & Right)
+      const leftWingGeo = new THREE.BufferGeometry();
+      const leftWingVertices = new Float32Array([
+         2.0, 0.0,  0.0,
+        -3.5, 0.0,  0.0,
+        -7.0, 0.6, 15.0,
+        -5.0, 0.6, 15.0,
+         2.0, 0.0,  0.0,
+        -7.0, 0.6, 15.0
+      ]);
+      leftWingGeo.setAttribute('position', new THREE.BufferAttribute(leftWingVertices, 3));
+      leftWingGeo.computeVertexNormals();
+      const leftWing = new THREE.Mesh(leftWingGeo, wingMat);
+      aircraftGroup.add(leftWing);
+
+      const rightWingGeo = leftWingGeo.clone();
+      rightWingGeo.scale(1, 1, -1);
+      const rightWing = new THREE.Mesh(rightWingGeo, wingMat);
+      aircraftGroup.add(rightWing);
+
+      // Winglet Raked Tips
+      const leftWingletGeo = new THREE.BoxGeometry(0.8, 1.8, 0.08);
+      const leftWinglet = new THREE.Mesh(leftWingletGeo, cyanAccentMat);
+      leftWinglet.position.set(-6.0, 1.4, 15.0);
+      leftWinglet.rotation.x = 0.35;
+      aircraftGroup.add(leftWinglet);
+
+      const rightWinglet = leftWinglet.clone();
+      rightWinglet.position.z = -15.0;
+      rightWinglet.rotation.x = -0.35;
+      aircraftGroup.add(rightWinglet);
+
+      // 3. Turbofan Engines (Underwing Nacelles)
+      const nacelleGeo = new THREE.CylinderGeometry(0.85, 0.75, 4.2, 24);
+      nacelleGeo.rotateZ(Math.PI / 2);
+
+      const leftEngine = new THREE.Mesh(nacelleGeo, engineMat);
+      leftEngine.position.set(0.5, -1.1, 5.5);
+      aircraftGroup.add(leftEngine);
+
+      const rightEngine = leftEngine.clone();
+      rightEngine.position.z = -5.5;
+      aircraftGroup.add(rightEngine);
+
+      // Engine Intake Glow Rings
+      const ringGeo = new THREE.TorusGeometry(0.8, 0.06, 16, 32);
+      ringGeo.rotateY(Math.PI / 2);
+      const leftRing = new THREE.Mesh(ringGeo, cyanAccentMat);
+      leftRing.position.set(2.6, -1.1, 5.5);
+      aircraftGroup.add(leftRing);
+
+      const rightRing = leftRing.clone();
+      rightRing.position.z = -5.5;
+      aircraftGroup.add(rightRing);
+
+      // 4. Vertical Tail Fin (Empennage)
+      const tailFinGeo = new THREE.BufferGeometry();
+      const tailVertices = new Float32Array([
+        -8.0, 0.4, 0.0,
+        -11.5, 0.3, 0.0,
+        -13.0, 5.5, 0.0,
+        -10.5, 5.5, 0.0,
+        -8.0, 0.4, 0.0,
+        -13.0, 5.5, 0.0
+      ]);
+      tailFinGeo.setAttribute('position', new THREE.BufferAttribute(tailVertices, 3));
+      tailFinGeo.computeVertexNormals();
+      const tailFin = new THREE.Mesh(tailFinGeo, wingMat);
+      aircraftGroup.add(tailFin);
+
+      // 5. Horizontal Stabilizers
+      const hStabGeo = new THREE.BufferGeometry();
+      const hStabVertices = new Float32Array([
+        -9.0, 0.2, 0.0,
+        -11.5, 0.2, 0.0,
+        -13.0, 0.2, 5.5,
+        -11.5, 0.2, 5.5,
+        -9.0, 0.2, 0.0,
+        -13.0, 0.2, 5.5
+      ]);
+      hStabGeo.setAttribute('position', new THREE.BufferAttribute(hStabVertices, 3));
+      hStabGeo.computeVertexNormals();
+      const leftHStab = new THREE.Mesh(hStabGeo, wingMat);
+      aircraftGroup.add(leftHStab);
+
+      const rightHStab = leftHStab.clone();
+      rightHStab.scale.z = -1;
+      aircraftGroup.add(rightHStab);
+
+      // 6. Navigation Strobe Lights
+      const redNavLight = new THREE.PointLight(0xff0044, 2.5, 8);
+      redNavLight.position.set(-6.0, 0.8, 15.2);
+      aircraftGroup.add(redNavLight);
+
+      const greenNavLight = new THREE.PointLight(0x00ff66, 2.5, 8);
+      greenNavLight.position.set(-6.0, 0.8, -15.2);
+      aircraftGroup.add(greenNavLight);
+
+      // 7. Orbital Flight Path Ring with Trajectory Particles
+      const orbitCurve = new THREE.EllipseCurve(0, 0, 16.5, 9.5, 0, 2 * Math.PI, false, 0);
+      const orbitPoints = orbitCurve.getPoints(120);
+      const orbitGeo = new THREE.BufferGeometry().setFromPoints(orbitPoints);
+      orbitGeo.rotateX(Math.PI / 2.3);
+      orbitGeo.rotateY(-0.3);
+
+      const orbitMat = new THREE.LineBasicMaterial({
+        color: 0x00f0ff,
+        transparent: true,
+        opacity: 0.35
+      });
+      const orbitLine = new THREE.Line(orbitGeo, orbitMat);
+      aircraftGroup.add(orbitLine);
+
+      // Initial Position & Angle
+      aircraftGroup.rotation.y = -Math.PI / 4.2;
+      aircraftGroup.rotation.x = 0.22;
+      aircraftGroup.rotation.z = -0.08;
+      aircraftGroup.position.set(1.5, -0.5, 0);
+
+      // Mouse Parallax
+      let targetRotX = 0.22;
+      let targetRotY = -Math.PI / 4.2;
+
+      window.addEventListener('mousemove', (e) => {
+        const normX = (e.clientX / window.innerWidth) - 0.5;
+        const normY = (e.clientY / window.innerHeight) - 0.5;
+        targetRotY = -Math.PI / 4.2 + (normX * 0.45);
+        targetRotX = 0.22 - (normY * 0.35);
+      });
+
+      // Animation Loop
+      let clock = new THREE.Clock();
+
+      function animateAircraft() {
+        requestAnimationFrame(animateAircraft);
+        const elapsedTime = clock.getElapsedTime();
+
+        // Smooth bank and floating hover
+        aircraftGroup.position.y = -0.5 + Math.sin(elapsedTime * 0.85) * 0.55;
+        aircraftGroup.position.x = 1.5 + Math.cos(elapsedTime * 0.65) * 0.35;
+
+        // Smooth mouse parallax slerp
+        aircraftGroup.rotation.y += (targetRotY - aircraftGroup.rotation.y) * 0.05;
+        aircraftGroup.rotation.x += (targetRotX - aircraftGroup.rotation.x) * 0.05;
+        aircraftGroup.rotation.z = Math.sin(elapsedTime * 0.8) * 0.06;
+
+        // Pulse navigation strobes
+        const strobe = Math.sin(elapsedTime * 6.0) > 0.7 ? 4.0 : 0.4;
+        redNavLight.intensity = strobe;
+        greenNavLight.intensity = strobe;
+
+        renderer.render(scene, camera);
+      }
+
+      animateAircraft();
+    })();
+
+    /* ==========================================================================
+       5. AIRCRAFT FILTERING & SPECIFICATION MODALS
+       ========================================================================== */
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const aircraftCards = document.querySelectorAll('.aircraft-card');
+
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const filter = btn.getAttribute('data-filter');
+
+        aircraftCards.forEach(card => {
+          const category = card.getAttribute('data-category');
+          if (filter === 'all' || category.includes(filter)) {
+            card.style.display = 'flex';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      });
+    });
+
+    const aircraftDataStore = {
+      '787-9': {
+        name: 'Boeing 787-9 Dreamliner',
+        mfg: 'Boeing',
+        family: '787 Dreamliner',
+        type: 'Twin-engine wide-body long-haul passenger aircraft',
+        seating: '250-325 passengers (Two-class)',
+        mtow: '259,220 kg',
+        range: '8,300 nmi (15,370 km)',
+        length: '62.8 metres',
+        wingspan: '60.1 metres',
+        role: 'Long-haul international passenger operations',
+        features: 'Composite-intensive airframe, high fuel efficiency, point-to-point nonstop routing capability',
+        airlines: 'Air India, Qatar Airways, Lufthansa, Turkish Airlines, Etihad Airways',
+        source: 'Boeing Official 787 Specifications'
+      },
+      '787-10': {
+        name: 'Boeing 787-10 Dreamliner',
+        mfg: 'Boeing',
+        family: '787 Dreamliner',
+        type: 'Twin-engine wide-body long-haul passenger aircraft',
+        seating: '300-375 passengers (Two-class)',
+        mtow: '260,360 kg',
+        range: '7,500 nmi (13,890 km)',
+        length: '68.3 metres',
+        wingspan: '60.1 metres',
+        role: 'High-capacity long-haul passenger operations',
+        features: 'Longest variant of the 787 family, high passenger capacity, composite airframe',
+        airlines: 'Singapore Airlines, Etihad Airways',
+        source: 'Boeing Official 787 Specifications'
+      },
+      'a350-900': {
+        name: 'Airbus A350-900',
+        mfg: 'Airbus',
+        family: 'A350 Family',
+        type: 'Twin-aisle wide-body passenger aircraft',
+        seating: '332-352 passengers (Three-class, max 440)',
+        mtow: '283 tonnes',
+        range: '8,600 nmi (15,750 km)',
+        engine: 'Rolls-Royce Trent XWB-84',
+        role: 'Long-haul and ultra-long-haul passenger operations',
+        features: 'Advanced carbon-composite construction, Airbus Airspace cabin, exceptional fuel burn efficiency',
+        airlines: 'Singapore Airlines (65 in fleet), Qatar Airways, Emirates, Air India, Lufthansa',
+        source: 'Airbus Official Specifications'
+      },
+      'a350-1000': {
+        name: 'Airbus A350-1000',
+        mfg: 'Airbus',
+        family: 'A350 Family',
+        type: 'Twin-aisle wide-body passenger aircraft',
+        seating: '375-400 passengers (Three-class, max 480)',
+        mtow: '324 tonnes',
+        range: '9,100 nmi (16,850 km)',
+        engine: 'Rolls-Royce Trent XWB-97',
+        role: 'High-capacity long-haul passenger operations',
+        features: 'Largest variant of A350 family, extended fuselage, six-wheel main landing gear',
+        airlines: 'Qatar Airways, British Airways',
+        source: 'Airbus Official Specifications'
+      },
+      'a380': {
+        name: 'Airbus A380',
+        mfg: 'Airbus',
+        family: 'A380 (Standalone Superjumbo)',
+        type: 'Four-engine double-deck wide-body passenger aircraft',
+        seating: 'Max 853 passengers (Typical 3-class ~525)',
+        range: '~8,000 nmi (~14,800 km)',
+        length: '~73 metres',
+        wingspan: '~80 metres',
+        engine: 'Rolls-Royce Trent 900 / Engine Alliance GP7000',
+        role: 'High-density mega-hub international operations',
+        features: 'Full-length double-deck fuselage, largest commercial passenger airliner in history',
+        airlines: 'Emirates (Largest operator, 100+), British Airways, Singapore Airlines, Qatar Airways, Etihad, Lufthansa',
+        source: 'Airbus Official Fleet Data'
+      },
+      '777-300er': {
+        name: 'Boeing 777-300ER',
+        mfg: 'Boeing',
+        family: '777 Family',
+        type: 'Twin-engine wide-body long-haul passenger aircraft',
+        range: '~7,370 nmi (~13,649 km)',
+        engine: 'General Electric GE90-115B (World’s most powerful commercial jet engine)',
+        role: 'High-capacity long-haul intercontinental routes',
+        features: 'Raked wingtips, high payload capability, twin-engine long-range efficiency',
+        airlines: 'Emirates, Singapore Airlines, Qatar Airways, British Airways, Air India, Etihad, Turkish Airlines',
+        source: 'Boeing Official Specifications'
+      },
+      '777-200lr': {
+        name: 'Boeing 777-200LR',
+        mfg: 'Boeing',
+        family: '777 Family',
+        type: 'Twin-engine wide-body ultra-long-range aircraft',
+        range: '~8,555 nmi (~15,843 km)',
+        engine: 'General Electric GE90-110B1',
+        role: 'Point-to-point ultra-long-haul nonstop missions',
+        features: 'Extended range capability, auxiliary fuel tanks, extreme route endurance',
+        airlines: 'Air India, Qatar Airways',
+        source: 'Boeing Official Specifications'
+      },
+      '737-max8': {
+        name: 'Boeing 737 MAX 8 (737-8)',
+        mfg: 'Boeing',
+        family: '737 MAX',
+        type: 'Single-aisle narrow-body passenger aircraft',
+        seating: '160-180 passengers (Two-class, max 210)',
+        mtow: '82,640 kg',
+        range: '3,500 nmi (6,480 km)',
+        engine: 'CFM International LEAP-1B',
+        role: 'Short-haul and medium-haul domestic & regional routes',
+        features: 'Advanced technology split winglets, CFM LEAP-1B engines, 14% fuel burn reduction',
+        airlines: 'Singapore Airlines (19 in service)',
+        source: 'Boeing Official Specifications'
+      },
+      'a320neo': {
+        name: 'Airbus A320neo',
+        mfg: 'Airbus',
+        family: 'A320 Family',
+        type: 'Single-aisle narrow-body passenger aircraft',
+        seating: '150-180 passengers (Max 194)',
+        mtow: '79 tonnes',
+        range: '3,400 nmi (6,300 km)',
+        engine: 'CFM LEAP-1A or Pratt & Whitney PW1100G-JM',
+        role: 'Short-haul and medium-haul continental operations',
+        features: 'Large Sharklets, new-generation fuel-efficient turbofans, Airbus Airspace interior',
+        airlines: 'Air India, British Airways, Lufthansa, Etihad Airways',
+        source: 'Airbus Official Specifications'
+      }
+    };
+
+    function openSpecModal(key) {
+      const modal = document.getElementById('spec-modal');
+      const content = document.getElementById('modal-spec-content');
+      const data = aircraftDataStore[key];
+      if (!data) return;
+
+      content.innerHTML = `
+        <div style="font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--accent-cyan); margin-bottom:0.25rem;">${data.mfg} // ${data.family}</div>
+        <h2 style="font-size:1.75rem; font-weight:500; color:#fff; margin-bottom:1.25rem;">${data.name}</h2>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem; background:rgba(255,255,255,0.02); padding:1.25rem; border-radius:var(--radius-inner); border:1px solid rgba(255,255,255,0.06);">
+          <div>
+            <div style="font-size:0.75rem; color:var(--text-tertiary);">Category</div>
+            <div style="font-size:0.9375rem; color:#fff; font-weight:500;">${data.type}</div>
+          </div>
+          <div>
+            <div style="font-size:0.75rem; color:var(--text-tertiary);">Official Range</div>
+            <div style="font-size:0.9375rem; color:var(--accent-cyan); font-weight:600;">${data.range}</div>
+          </div>
+          ${data.seating ? `<div>
+            <div style="font-size:0.75rem; color:var(--text-tertiary);">Passenger Seating</div>
+            <div style="font-size:0.9375rem; color:#fff; font-weight:500;">${data.seating}</div>
+          </div>` : ''}
+          ${data.mtow ? `<div>
+            <div style="font-size:0.75rem; color:var(--text-tertiary);">MTOW</div>
+            <div style="font-size:0.9375rem; color:#fff; font-weight:500;">${data.mtow}</div>
+          </div>` : ''}
+          ${data.wingspan ? `<div>
+            <div style="font-size:0.75rem; color:var(--text-tertiary);">Wingspan / Length</div>
+            <div style="font-size:0.9375rem; color:#fff; font-weight:500;">${data.wingspan} ${data.length ? ' / ' + data.length : ''}</div>
+          </div>` : ''}
+          ${data.engine ? `<div>
+            <div style="font-size:0.75rem; color:var(--text-tertiary);">Powerplant</div>
+            <div style="font-size:0.9375rem; color:#fff; font-weight:500;">${data.engine}</div>
+          </div>` : ''}
+        </div>
+
+        <div style="margin-bottom:1.25rem;">
+          <div style="font-size:0.8125rem; font-weight:600; color:var(--accent-cyan); margin-bottom:0.35rem;">Airframe & Role</div>
+          <p style="font-size:0.875rem; color:var(--text-secondary); line-height:1.6;">${data.features}. Configured primarily for: ${data.role}.</p>
+        </div>
+
+        <div style="margin-bottom:1.5rem;">
+          <div style="font-size:0.8125rem; font-weight:600; color:var(--accent-cyan); margin-bottom:0.35rem;">Knowledge Base Airline Operators</div>
+          <p style="font-size:0.875rem; color:var(--text-secondary); line-height:1.6;">${data.airlines}</p>
+        </div>
+
+        <div style="padding-top:1rem; border-top:1px solid rgba(255,255,255,0.06); font-size:0.75rem; color:var(--text-tertiary); display:flex; justify-content:space-between;">
+          <span>Source: ${data.source}</span>
+          <span style="color:var(--accent-cyan);">AeroIntel Verified Document</span>
+        </div>
+      `;
+
+      modal.classList.add('active');
+    }
+
+    function closeSpecModal(e) {
+      if (e.target.id === 'spec-modal') {
+        document.getElementById('spec-modal').classList.remove('active');
+      }
+    }
+
+    function closeSpecModalDirect() {
+      document.getElementById('spec-modal').classList.remove('active');
+    }
+
+    /* ==========================================================================
+       6. INTERACTIVE CONVERSATIONAL AI & FASTAPI INTEGRATION
+       Offline demonstration answers strictly match the authentic AeroIntel vector store.
+       ========================================================================== */
+    const authenticKnowledgeAnswers = {
+      'What is the difference between the Boeing 787-9 and 787-10?': {
+        answer: "The primary differences between the **Boeing 787-9** and **787-10 Dreamliner** center on capacity, fuselage dimensions, and operational range:\n\n• **Length & Airframe:** The 787-10 is the longest member of the 787 family at **68.3 metres**, whereas the 787-9 measures **62.8 metres**. Both share the same 60.1-metre wingspan.\n• **Passenger Capacity:** The 787-10 carries **300–375 passengers** in typical two-class layout, compared to **250–325 passengers** for the 787-9.\n• **Range Trade-Off:** The 787-9 offers longer range at up to **8,300 nautical miles (15,370 km)**. The larger 787-10 is optimized for high-capacity long-haul routes with a range of **7,500 nautical miles (13,890 km)**.\n• **MTOW:** 787-10 MTOW is slightly higher at **260,360 kg** versus **259,220 kg** for the 787-9.",
+        citation: "[Source: Boeing Official 787 Specifications]"
+      },
+      'Compare the Airbus A350-1000 and Boeing 777-300ER.': {
+        answer: "Comparing the **Airbus A350-1000** and **Boeing 777-300ER** across the AeroIntel knowledge base:\n\n• **Range:** The Airbus A350-1000 delivers up to **9,100 nautical miles (16,850 km)** of range, surpassing the 777-300ER's **~7,370 nautical miles (~13,649 km)**.\n• **Passenger Capacity:** The A350-1000 accommodates **375–400 passengers** in standard three-class seating (max 480 passengers), providing direct high-density competition to the 777-300ER.\n• **Powerplants:** The 777-300ER is powered by twin **General Electric GE90-115B** engines. The A350-1000 is powered by **Rolls-Royce Trent XWB-97** turbofans.\n• **Airframe Materials:** The A350-1000 features modern composite construction with the Airbus Airspace cabin, achieving superior fuel burn compared to previous-generation widebodies.",
+        citation: "[Source: Airbus Official Specifications, Boeing Official Specifications]"
+      },
+      'Which airlines operate the Airbus A380?': {
+        answer: "According to the AeroIntel knowledge base, six of the eight indexed airlines operate or have operated the **Airbus A380**:\n\n1. **Emirates:** The world's largest operator of the A380, operating an extensive global superjumbo network out of Dubai International (DXB).\n2. **Singapore Airlines:** Operates 12 Airbus A380-800 aircraft out of Singapore Changi.\n3. **Etihad Airways:** Operates 7 Airbus A380s in active service from Abu Dhabi.\n4. **British Airways:** Operates Airbus A380-800 on high-density routes out of London Heathrow.\n5. **Lufthansa:** Deploys A380-800 aircraft from Frankfurt and Munich.\n6. **Qatar Airways:** Operates Airbus A380 from Hamad International Airport.\n\n*(Note: Air India and Turkish Airlines do not operate the A380 in our verified database.)*",
+        citation: "[Source: Emirates Official Fleet Information, Airline Knowledge Base]"
+      },
+      'Explain the Boeing 737 MAX 8 specifications.': {
+        answer: "The **Boeing 737-8 (737 MAX 8)** is a single-aisle narrow-body passenger aircraft:\n\n• **Manufacturer & Family:** Boeing, 737 MAX\n• **Engines:** CFM International LEAP-1B with advanced technology winglets\n• **Range:** **3,500 nautical miles (6,480 km)**\n• **Typical Seating:** **160–180 passengers** (two-class configuration, maximum 210 passengers)\n• **Maximum Takeoff Weight (MTOW):** **82,640 kg**\n• **Primary Role:** Short-haul and medium-haul passenger operations\n• **AeroIntel Knowledge Base Operators:** Operated by Singapore Airlines (19 aircraft in fleet).",
+        citation: "[Source: Boeing Official Specifications]"
+      }
+    };
+
+    let apiConfig = {
+      baseUrl: 'http://127.0.0.1:8000',
+      jwtToken: ''
+    };
+
+    function askPreset(question) {
+      const input = document.getElementById('chat-input-field');
+      input.value = question;
+      handleChatSubmit(new Event('submit'));
+    }
+
+    async function handleChatSubmit(e) {
+      if (e) e.preventDefault();
+      const input = document.getElementById('chat-input-field');
+      const question = input.value.trim();
+      if (!question) return;
+
+      appendChatMessage('user', question);
+      input.value = '';
+
+      const typing = document.getElementById('chat-typing');
+      typing.classList.add('active');
+
+      const viewport = document.getElementById('chat-messages');
+      viewport.scrollTop = viewport.scrollHeight;
+
+      // Try Backend Connection if token or live API is selected, else fallback to Smart Knowledge Base
+      let answered = false;
+
+      if (apiConfig.baseUrl) {
+        try {
+          const headers = { 'Content-Type': 'application/json' };
+          if (apiConfig.jwtToken) {
+            headers['Authorization'] = `Bearer ${apiConfig.jwtToken}`;
+          }
+
+          const response = await fetch(`${apiConfig.baseUrl}/ask`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ question: question })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            typing.classList.remove('active');
+            appendChatMessage('ai', data.answer, '[Source: Live RAG Pipeline / Pinecone aerointel-v2]');
+            answered = true;
+          }
+        } catch (err) {
+          // If network / CORS / auth error, fall back gracefully to demonstration mode
+        }
+      }
+
+      if (!answered) {
+        // Fallback to Knowledge Base simulation
+        setTimeout(() => {
+          typing.classList.remove('active');
+          const matched = authenticKnowledgeAnswers[question];
+          if (matched) {
+            appendChatMessage('ai', matched.answer, matched.citation);
+          } else {
+            // General query synthesiser based on real data
+            let fallbackAns = `Based on the **AeroIntel knowledge base** (17 documents across 9 aircraft and 8 airlines):\n\nYour question about "${question}" touches on our indexed fleet and technical specifications. In our 384-dimensional vector store, models include the Boeing 787-9/10, 777-200LR/300ER, 737 MAX 8, and Airbus A320neo, A350-900/1000, and A380.\n\nConnect a live running FastAPI backend with \`/auth/login\` credentials to execute unbounded generative queries via Google Gemini ADK and Pinecone.`;
+            appendChatMessage('ai', fallbackAns, '[Source: AeroIntel Vector Index aerointel-v2]');
+          }
+        }, 850);
+      }
+    }
+
+    function appendChatMessage(role, text, citation) {
+      const viewport = document.getElementById('chat-messages');
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `chat-message ${role}`;
+
+      const formattedText = text.replace(/\n\n/g, '<br><br>').replace(/\n•/g, '<br>•').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+      msgDiv.innerHTML = `
+        <div class="msg-bubble">
+          <div>${formattedText}</div>
+          ${citation ? `<div class="msg-citation"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>${citation}</div>` : ''}
+        </div>
+      `;
+
+      viewport.appendChild(msgDiv);
+      viewport.scrollTop = viewport.scrollHeight;
+    }
+
+    /* API Modal Handlers */
+    function openApiModal() {
+      document.getElementById('api-modal').classList.add('active');
+    }
+
+    function closeApiModal(e) {
+      if (e.target.id === 'api-modal') {
+        document.getElementById('api-modal').classList.remove('active');
+      }
+    }
+
+    function closeApiModalDirect() {
+      document.getElementById('api-modal').classList.remove('active');
+    }
+
+    async function testAndSaveApiConfig() {
+      const url = document.getElementById('api-base-url').value.trim();
+      const token = document.getElementById('api-jwt-token').value.trim();
+      const statusPing = document.getElementById('api-status-ping');
+
+      statusPing.innerText = 'Pinging /health...';
+      statusPing.style.color = 'var(--accent-cyan)';
+
+      try {
+        const res = await fetch(`${url}/health`, { method: 'GET' });
+        if (res.ok) {
+          const json = await res.json();
+          apiConfig.baseUrl = url;
+          apiConfig.jwtToken = token;
+          statusPing.innerText = `Connected! API: ${json.app} (Healthy)`;
+          statusPing.style.color = '#10b981';
+          setTimeout(() => closeApiModalDirect(), 1000);
+          return;
+        }
+      } catch (e) {
+        statusPing.innerText = 'Could not reach API. Saved for fallback.';
+        statusPing.style.color = 'var(--text-tertiary)';
+      }
+
+      apiConfig.baseUrl = url;
+      apiConfig.jwtToken = token;
+      setTimeout(() => closeApiModalDirect(), 900);
+    }
+  </script>
+</body>
+</html>
+
