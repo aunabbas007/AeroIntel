@@ -10,7 +10,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from google.adk.agents import LlmAgent
-from google.adk.models import FallbackModel
+from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.adk.tools.mcp_tool import McpToolset, StdioConnectionParams
@@ -147,17 +147,11 @@ async def lifespan(app: FastAPI):
 
         agent = LlmAgent(
             name="aerointel_agent",
-            model=FallbackModel(
-                models=[
-                    os.getenv(
-                        "GEMINI_MODEL_PRIMARY",
-                        "gemini-3.8-flash",
-                    ),
-                    os.getenv(
-                        "GEMINI_MODEL_FALLBACK",
-                        "gemini-3.6-flash",
-                    ),
-                ]
+            model=LiteLlm(
+                model=os.getenv(
+                    "GROQ_MODEL",
+                    "groq/openai/gpt-oss-120b",
+                )
             ),
             description="An aviation intelligence assistant.",
             instruction="""
