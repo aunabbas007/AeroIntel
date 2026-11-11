@@ -151,7 +151,8 @@ async def lifespan(app: FastAPI):
                 model=os.getenv(
                     "GROQ_MODEL",
                     "groq/openai/gpt-oss-120b",
-                )
+                ),
+                include_reasoning=False,
             ),
             description="An aviation intelligence assistant.",
             instruction="""
@@ -677,7 +678,10 @@ async def ask_question(
 
             if event.is_final_response() and event.content:
                 for part in event.content.parts or []:
-                    if part.text:
+                    if (
+                        part.text
+                        and not getattr(part,"thought",False)
+                    ):
                         answer_parts.append(part.text)
 
         runner_duration = time.perf_counter() - runner_started
