@@ -1,26 +1,16 @@
 import os
-from typing import TypedDict
 
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage
-from langchain_core.prompts import ChatPromptTemplate
-
-from langgraph.graph import (
-    StateGraph,
-    MessagesState,
-    START,
-    END
-)
-
+from langgraph.graph import StateGraph, MessagesState, START, END
 from langgraph.prebuilt import ToolNode
 
 from source.tools import (
     search_aviation_knowledge,
     search_airline,
-    search_aircraft
+    search_aircraft,
 )
 
 
@@ -32,351 +22,290 @@ load_dotenv()
 # ============================================================
 
 class State(MessagesState):
-
-    question: str
-
+    # Keep the user's wording immutable. Only search_query is rewritten.
+    original_question: str
+    search_query: str
     context: str
-
     retrieval_attempts: int
-
     retrieval_relevant: bool
-
+    evaluation_reason: str
     answer: str
 
 
 # ============================================================
-# 2. LLM
+# 2. LLM AND TOOLS
 # ============================================================
 
 llm = ChatGoogleGenerativeAI(
     model=os.getenv("GEMINI_MODEL_PRIMARY", "gemini-3.8-flash")
 )
 
-
-# ============================================================
-# 3. TOOLS
-# ============================================================
-
 tools = [
     search_aviation_knowledge,
     search_airline,
-    search_aircraft
+    search_aircraft,
 ]
 
-
-llm_with_tools = llm.bind_tools(
-    tools
-)
-
-
-tool_node = ToolNode(
-    tools
-)
+llm_with_tools = llm.bind_tools(tools)
+tool_node = ToolNode(tools)
 
 
 # ============================================================
-# 4. RETRIEVAL EVALUATION
+# 3. RETRIEVAL EVALUATION
 # ============================================================
 
 class RetrievalEvaluation(BaseModel):
-
     relevant: bool
-
     reason: str
 
 
-evaluator = llm.with_structured_output(
-    RetrievalEvaluation
-)
+evaluator = llm.with_structured_output(RetrievalEvaluation)
+
+
+def _content_to_text(content) -> str:
+    """Normalize provider message content into plain text."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict) and item.get("text"):
+                parts.append(str(item["text"]))
+        return "\n".join(parts).strip()
+    return str(content)
 
 
 # ============================================================
-# 5. AGENT NODE
+# 4. AGENT NODE
 # ============================================================
 
 def agent(state: State):
-
     system_message = """
 You are AeroIntel, an aviation intelligence agent.
 
-You answer questions about airlines and aircraft using
-the available AeroIntel knowledge-base tools.
+Retrieve evidence from the AeroIntel knowledge base before
+answering. You must call at least one appropriate tool.
 
-You MUST use an appropriate tool to retrieve information
-before answering the user's question.
-
-Choose the most specific tool available:
-
+Choose the most specific tool:
 - search_airline for airline-specific questions
 - search_aircraft for aircraft-specific questions
 - search_aviation_knowledge for general aviation questions
 
-Do not answer from your own knowledge.
+Do not answer from your own knowledge. Use the current search
+query as the retrieval query.
 """
 
-    messages = [
-        {
-            "role": "system",
-            "content": system_message
-        },
-        {
-            "role": "user",
-            "content": state["question"]
-        }
-    ]
-
     response = llm_with_tools.invoke(
-        messages
+        [
+            ("system", system_message),
+            ("human", state["search_query"]),
+        ]
     )
 
-    return {
-        "messages": [response]
-    }
+    return {"messages": [response]}
 
 
 # ============================================================
-# 6. ROUTE AFTER AGENT
+# 5. ROUTE AFTER AGENT
 # ============================================================
 
 def route_after_agent(state: State):
-
     last_message = state["messages"][-1]
 
-    if last_message.tool_calls:
+    # Never generate an answer when the model skipped retrieval.
+    if getattr(last_message, "tool_calls", None):
         return "tools"
 
-    return "generate"
+    return "insufficient"
 
 
 # ============================================================
-# 7. EVALUATE TOOL RESULTS
+# 6. COLLECT AND EVALUATE THIS ATTEMPT ONLY
 # ============================================================
 
 def evaluate_retrieval(state: State):
+    messages = state["messages"]
+    last_ai_message = next(
+        (
+            message
+            for message in reversed(messages)
+            if getattr(message, "tool_calls", None)
+        ),
+        None,
+    )
 
-    tool_messages = [
-        message
-        for message in state["messages"]
-        if message.type == "tool"
-    ]
-
-    if not tool_messages:
-
+    if last_ai_message is None:
         return {
+            "context": "",
             "retrieval_relevant": False,
-            "context": ""
+            "evaluation_reason": "No retrieval tool call was made.",
         }
 
+    # Match only ToolMessages generated for the latest AI tool-call batch.
+    current_tool_call_ids = {
+        tool_call["id"] for tool_call in last_ai_message.tool_calls
+    }
+    current_tool_messages = [
+        message
+        for message in messages
+        if message.type == "tool"
+        and getattr(message, "tool_call_id", None) in current_tool_call_ids
+    ]
+
     context = "\n\n".join(
-        message.content
-        for message in tool_messages
-    )
+        _content_to_text(message.content)
+        for message in current_tool_messages
+        if message.content
+    ).strip()
+
+    if not context:
+        return {
+            "context": "",
+            "retrieval_relevant": False,
+            "evaluation_reason": "The retrieval tools returned no usable content.",
+        }
 
     evaluation_prompt = f"""
-You are evaluating retrieved information for an
-aviation question.
+Assess whether the retrieved evidence is sufficient to answer
+the user's original aviation question.
 
-Question:
-{state["question"]}
+Original user question:
+{state["original_question"]}
 
-Retrieved information:
+Search query used for this attempt:
+{state["search_query"]}
+
+Retrieved evidence:
 {context}
 
-Determine whether the retrieved information contains
-enough relevant evidence to answer the question.
-
-Return relevant=True only when the retrieved information
-directly supports answering the question.
-
-Return relevant=False if the information is unrelated,
-insufficient, or does not contain enough evidence.
+Set relevant=true only if this evidence directly supports a
+useful answer to the original question. Otherwise set relevant=false.
+Give a concise reason that can guide a better search query.
 """
 
-    result = evaluator.invoke(
-        evaluation_prompt
-    )
+    result = evaluator.invoke(evaluation_prompt)
 
     return {
         "context": context,
-        "retrieval_relevant": result.relevant
+        "retrieval_relevant": result.relevant,
+        "evaluation_reason": result.reason,
     }
 
 
 # ============================================================
-# 8. ROUTE AFTER EVALUATION
+# 7. ROUTE AFTER EVALUATION
 # ============================================================
 
 def route_after_evaluation(state: State):
-
     if state["retrieval_relevant"]:
-
         return "generate"
 
     if state["retrieval_attempts"] >= 3:
-
         return "insufficient"
 
     return "rewrite"
 
 
 # ============================================================
-# 9. QUERY REWRITE
+# 8. QUERY REWRITE
 # ============================================================
 
 def rewrite_query(state: State):
-
     rewrite_prompt = f"""
-Rewrite the user's question into a better search query
-for the AeroIntel aviation knowledge base.
+Rewrite the search query for the AeroIntel aviation knowledge base.
 
-Original question:
-{state["question"]}
+Original user question:
+{state["original_question"]}
 
-The previous retrieval attempt did not provide enough
-relevant information.
+Previous search query:
+{state["search_query"]}
 
-Make the new query more specific and useful for semantic
-search.
+Why the previous retrieval was insufficient:
+{state["evaluation_reason"]}
 
-Return ONLY the rewritten search query.
+Create a more specific search query that addresses the missing
+evidence. Preserve the user's actual intent. Return only the query.
 """
 
-    response = llm.invoke(
-        rewrite_prompt
-    )
+    response = llm.invoke(rewrite_prompt)
+    rewritten_query = _content_to_text(response.content).strip()
+
+    if not rewritten_query:
+        rewritten_query = state["search_query"]
 
     return {
-        "question": response.content,
-        "retrieval_attempts": (
-            state["retrieval_attempts"] + 1
-        ),
+        "search_query": rewritten_query,
+        "retrieval_attempts": state["retrieval_attempts"] + 1,
         "context": "",
-        "retrieval_relevant": False
+        "retrieval_relevant": False,
+        "evaluation_reason": "",
     }
 
 
 # ============================================================
-# 10. GENERATE FINAL ANSWER
+# 9. GENERATE FINAL ANSWER
 # ============================================================
 
 def generate_answer(state: State):
-
-    prompt = ChatPromptTemplate.from_template(
-        """
+    prompt = f"""
 You are AeroIntel, an aviation intelligence assistant.
 
-Answer the user's question using ONLY the provided
-knowledge-base context.
+Answer the original user question using ONLY the retrieved
+knowledge-base evidence below. Do not use outside knowledge.
+If the evidence does not support a detail, do not invent it.
 
-Do not use outside knowledge.
+Retrieved evidence:
+{state["context"]}
 
-If the context does not contain enough information,
-say:
-
-"I don't have enough information in the knowledge base
-to answer that question."
-
-Knowledge-base context:
-
-{context}
-
-User question:
-
-{question}
+Original user question:
+{state["original_question"]}
 """
-    )
 
-    chain = prompt | llm
+    response = llm.invoke(prompt)
 
-    response = chain.invoke(
-        {
-            "context": state["context"],
-            "question": state["question"]
-        }
-    )
-
-    return {
-        "answer": response.content
-    }
+    return {"answer": _content_to_text(response.content)}
 
 
 # ============================================================
-# 11. INSUFFICIENT EVIDENCE
+# 10. INSUFFICIENT EVIDENCE
 # ============================================================
 
 def insufficient_evidence(state: State):
-
     return {
         "answer": (
-            "I don't have enough information in the "
-            "knowledge base to answer that question."
+            "I don't have enough information in the knowledge base "
+            "to answer that question."
         )
     }
 
 
 # ============================================================
-# 12. BUILD GRAPH
+# 11. BUILD GRAPH
 # ============================================================
 
 graph = StateGraph(State)
 
+graph.add_node("agent", agent)
+graph.add_node("tools", tool_node)
+graph.add_node("evaluate", evaluate_retrieval)
+graph.add_node("rewrite", rewrite_query)
+graph.add_node("generate", generate_answer)
+graph.add_node("insufficient", insufficient_evidence)
 
-graph.add_node(
-    "agent",
-    agent
-)
-
-graph.add_node(
-    "tools",
-    tool_node
-)
-
-graph.add_node(
-    "evaluate",
-    evaluate_retrieval
-)
-
-graph.add_node(
-    "rewrite",
-    rewrite_query
-)
-
-graph.add_node(
-    "generate",
-    generate_answer
-)
-
-graph.add_node(
-    "insufficient",
-    insufficient_evidence
-)
-
-
-# ============================================================
-# 13. GRAPH EDGES
-# ============================================================
-
-graph.add_edge(
-    START,
-    "agent"
-)
-
+graph.add_edge(START, "agent")
 
 graph.add_conditional_edges(
     "agent",
     route_after_agent,
     {
         "tools": "tools",
-        "generate": "generate"
-    }
+        "insufficient": "insufficient",
+    },
 )
 
-
-graph.add_edge(
-    "tools",
-    "evaluate"
-)
-
+graph.add_edge("tools", "evaluate")
 
 graph.add_conditional_edges(
     "evaluate",
@@ -384,54 +313,37 @@ graph.add_conditional_edges(
     {
         "generate": "generate",
         "rewrite": "rewrite",
-        "insufficient": "insufficient"
-    }
+        "insufficient": "insufficient",
+    },
 )
 
-
-graph.add_edge(
-    "rewrite",
-    "agent"
-)
-
-
-graph.add_edge(
-    "generate",
-    END
-)
-
-
-graph.add_edge(
-    "insufficient",
-    END
-)
-
-
-# ============================================================
-# 14. COMPILE
-# ============================================================
+graph.add_edge("rewrite", "agent")
+graph.add_edge("generate", END)
+graph.add_edge("insufficient", END)
 
 app = graph.compile()
 
 
 # ============================================================
-# 15. RUN
+# 12. RUN
 # ============================================================
 
 if __name__ == "__main__":
+    question = input("Ask AeroIntel: ").strip()
 
-    question = input(
-        "Ask AeroIntel: "
-    )
+    if not question:
+        raise SystemExit("Please enter a question.")
 
     result = app.invoke(
         {
             "messages": [],
-            "question": question,
+            "original_question": question,
+            "search_query": question,
             "context": "",
             "retrieval_attempts": 1,
             "retrieval_relevant": False,
-            "answer": ""
+            "evaluation_reason": "",
+            "answer": "",
         }
     )
 

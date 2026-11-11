@@ -1,4 +1,3 @@
-
 import hashlib
 import logging
 import os
@@ -7,6 +6,7 @@ import sys
 
 import redis
 from mcp.server.mcpserver import MCPServer
+from source.hybrid_search import hybrid_retrieve
 from source.vector_store import create_vector_store
 
 
@@ -18,7 +18,10 @@ vector_store = create_vector_store()
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 CACHE_TTL = int(os.getenv("REDIS_CACHE_TTL_SECONDS", "3600"))
-CACHE_VERSION = os.getenv("AEROINTEL_CACHE_VERSION", "v1")
+CACHE_VERSION = os.getenv("AEROINTEL_CACHE_VERSION", "v2")
+RETRIEVAL_MODE = os.getenv("AEROINTEL_RETRIEVAL_MODE", "dense").lower()
+RETRIEVAL_K = int(os.getenv("AEROINTEL_RETRIEVAL_K", "3"))
+
 
 redis_client = redis.Redis.from_url(
     REDIS_URL,
@@ -53,43 +56,57 @@ def normalize_name(value: str) -> str:
 
 def make_cache_key(search_type: str, query: str, entity_type: str = ""):
     normalized = normalize_name(query)
-    raw = f"{CACHE_VERSION}:{search_type}:{entity_type}:{normalized}"
+    raw = (
+        f"{CACHE_VERSION}:{RETRIEVAL_MODE}:{search_type}:"
+        f"{entity_type}:{normalized}"
+    )
     digest = hashlib.sha256(raw.encode()).hexdigest()
-
     return f"aerointel:retrieval:{digest}"
 
 
 def cached_retrieval(cache_key: str, retrieval_function) -> str:
     """Read from Redis, retrieve from Pinecone on a miss."""
-
     try:
         cached = redis_client.get(cache_key)
-
         if cached is not None:
             logger.info("retrieval_cache_hit")
             return cached
-
     except redis.RedisError as error:
         logger.warning(
-            "redis_read_failed error_type=%s",
-            type(error).__name__,
+            "redis_read_failed error_type=%s", type(error).__name__
         )
 
     logger.info("retrieval_cache_miss")
-
-    # Pinecone retrieval
     result = retrieval_function()
 
     try:
         redis_client.setex(cache_key, CACHE_TTL, result)
-
     except redis.RedisError as error:
         logger.warning(
-            "redis_write_failed error_type=%s",
-            type(error).__name__,
+            "redis_write_failed error_type=%s", type(error).__name__
         )
 
     return result
+
+
+def retrieve(query: str, entity_type: str | None = None, k: int = RETRIEVAL_K):
+    if RETRIEVAL_MODE == "hybrid":
+        documents = hybrid_retrieve(
+            query=query,
+            vector_store=vector_store,
+            k=k,
+            entity_type=entity_type,
+        )
+    elif RETRIEVAL_MODE == "dense":
+        search_kwargs = {"k": k}
+        if entity_type:
+            search_kwargs["filter"] = {"type": entity_type}
+        documents = vector_store.similarity_search(query, **search_kwargs)
+    else:
+        raise ValueError(
+            "AEROINTEL_RETRIEVAL_MODE must be 'dense' or 'hybrid'."
+        )
+    return documents
 
 
 def get_entity_id(entity_name: str, entity_type: str) -> str | None:
@@ -123,61 +140,48 @@ def get_entity_id(entity_name: str, entity_type: str) -> str | None:
     }
 
     entity_id = aliases.get(name)
-
     if entity_id is None:
         return None
 
     airline_ids = {
-        "emirates",
-        "air_india",
-        "british_airways",
-        "etihad_airways",
-        "lufthansa",
-        "qatar_airways",
-        "singapore_airlines",
+        "emirates", "air_india", "british_airways", "etihad_airways",
+        "lufthansa", "qatar_airways", "singapore_airlines",
         "turkish_airlines",
     }
 
     if entity_type == "aircraft" and entity_id in airline_ids:
         return None
-
     if entity_type == "airline" and entity_id not in airline_ids:
         return None
-
     return entity_id
 
 
 def search_entity_uncached(name: str, entity_type: str) -> str:
     entity_id = get_entity_id(name, entity_type)
 
+    # Preserve exact entity lookup; it is more reliable than semantic search
+    # for known model and airline names.
     if entity_id:
         documents = vector_store.similarity_search(
             name,
             k=1,
-            filter={
-                "type": entity_type,
-                "entity_id": entity_id,
-            },
+            filter={"type": entity_type, "entity_id": entity_id},
         )
-
         if documents:
             return format_documents(documents)
 
-    documents = vector_store.similarity_search(
+    documents = retrieve(
         f"Information about {entity_type} {name}",
-        k=3,
-        filter={"type": entity_type},
+        entity_type=entity_type,
+        k=RETRIEVAL_K,
     )
-
     if not documents:
         return f"No {entity_type} information found for {name}."
-
     return format_documents(documents)
 
 
 def search_entity(name: str, entity_type: str) -> str:
     cache_key = make_cache_key("entity", name, entity_type)
-
     return cached_retrieval(
         cache_key,
         lambda: search_entity_uncached(name, entity_type),
@@ -187,11 +191,10 @@ def search_entity(name: str, entity_type: str) -> str:
 @mcp.tool()
 def search_aircraft(aircraft: str) -> str:
     """Search for a specific aircraft in AeroIntel."""
-
     try:
         return search_entity(aircraft, "aircraft")
-
     except Exception as error:
+        logger.exception("aircraft_search_failed")
         print(
             f"Aircraft search failed: {type(error).__name__}",
             file=sys.stderr,
@@ -203,11 +206,10 @@ def search_aircraft(aircraft: str) -> str:
 @mcp.tool()
 def search_airline(airline: str) -> str:
     """Search for a specific airline in AeroIntel."""
-
     try:
         return search_entity(airline, "airline")
-
     except Exception as error:
+        logger.exception("airline_search_failed")
         print(
             f"Airline search failed: {type(error).__name__}",
             file=sys.stderr,
@@ -219,21 +221,15 @@ def search_airline(airline: str) -> str:
 @mcp.tool()
 def search_aviation_knowledge(query: str) -> str:
     """Search general aviation information in AeroIntel."""
-
     try:
         cache_key = make_cache_key("knowledge", query)
-
-        def retrieve():
-            documents = vector_store.similarity_search(query, k=3)
-
-            if not documents:
-                return "No relevant aviation information found."
-
-            return format_documents(documents)
-
-        return cached_retrieval(cache_key, retrieve)
-
+        documents = cached_retrieval(
+            cache_key,
+            lambda: format_documents(retrieve(query, k=RETRIEVAL_K)),
+        )
+        return documents or "No relevant aviation information found."
     except Exception as error:
+        logger.exception("general_aviation_search_failed")
         print(
             f"General aviation search failed: {type(error).__name__}",
             file=sys.stderr,

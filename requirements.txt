@@ -1,9 +1,8 @@
-
 # FastAPI backend
 fastapi
 uvicorn[standard]
 
-# Google ADK and MCP — match your working local versions
+# Google ADK and MCP
 google-adk==2.12.0
 mcp==2.3.0
 google-genai
@@ -20,6 +19,7 @@ langchain-text-splitters
 # Embeddings and vector database
 sentence-transformers
 pinecone
+rank-bm25>=0.2.2,<1
 
 # PostgreSQL and database migrations
 sqlalchemy
@@ -37,5 +37,4 @@ httpx
 pytest
 
 litellm>=1.84
-
 redis

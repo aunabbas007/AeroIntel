@@ -1,144 +1,208 @@
 # AeroIntel
 
-AeroIntel is a FastAPI aviation assistant. It retrieves evidence from a
-Pinecone knowledge base through MCP tools, asks Gemini to write a grounded
-answer, and stores conversation history in PostgreSQL.
+AeroIntel is an aviation knowledge assistant built with FastAPI, Google ADK,
+MCP, Groq through LiteLLM, Pinecone, PostgreSQL, Redis, and a browser frontend.
+It retrieves evidence from a curated aviation knowledge base, generates
+source-grounded answers, and persists authenticated conversation history.
 
-## What is included
+## Architecture
 
-- FastAPI endpoints for health, readiness, login, account creation, questions,
-  and conversation history.
-- Swagger UI login at `/docs`; users sign in with an email and password.
-- Argon2 password hashes and signed, expiring access tokens.
-- Gemini primary and fallback models configured through environment variables.
-- MCP retrieval with source labels, source-grounded answers, and checks for a
-  missing or incompatible Pinecone index.
-- Alembic migrations, Docker Compose for local PostgreSQL, and a non-root
-  production container.
+- **Frontend:** static `index.html` served by FastAPI.
+- **API:** FastAPI endpoints for registration, login, questions, health,
+  readiness, and conversation history.
+- **Agent runtime:** Google ADK `LlmAgent` and `Runner`; production model
+  configured with `GROQ_MODEL` through LiteLLM.
+- **Tool protocol:** MCP server exposes aircraft, airline, and general
+  aviation retrieval tools.
+- **Retrieval:** Pinecone dense vectors, optional BM25 + dense hybrid search,
+  Reciprocal Rank Fusion, and optional cross-encoder reranking.
+- **Cache:** Redis retrieval cache with TTL and versioned keys.
+- **Persistence:** PostgreSQL with SQLAlchemy and Alembic migrations.
+- **Deployment:** Docker, ECR, EC2 Systems Manager, Caddy, and blue-green
+  candidate deployment with a retained previous container.
+
+The standalone `agent.py` is a LangGraph retrieval workflow for development
+and evaluation. The deployed API currently uses Google ADK in `api.py`.
+LangGraph is not silently substituted into the production request path.
 
 ## Configuration
 
-Copy `.env.example` to `.env` only if `.env` does not already exist. If you
-already have a `.env`, preserve it and add or update the required settings
-without replacing its secret values.
+Copy `.env.example` to `.env` for local development. Preserve existing
+secrets if a local `.env` already exists. Never commit real credentials.
 
-Required settings:
+Important settings:
 
-| Setting | Purpose |
+| Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | PostgreSQL connection URL. For the local Compose stack, use the `db` hostname shown in `.env.example`. |
-| `JWT_SECRET_KEY` | Private signing key. Use a random value of at least 32 characters. |
-| `GOOGLE_API_KEY` | Gemini API access. |
-| `PINECONE_API_KEY` | Pinecone access. |
+| `DATABASE_URL` | PostgreSQL connection URL |
+| `JWT_SECRET_KEY` | Random signing secret; use at least 32 characters |
+| `GROQ_API_KEY` | Production LLM provider credential |
+| `GROQ_MODEL` | LiteLLM model identifier |
+| `GOOGLE_API_KEY` | Gemini credential for standalone Gemini/LangGraph tools |
+| `PINECONE_API_KEY` | Pinecone credential |
+| `PINECONE_INDEX_NAME` | Existing 384-dimensional Pinecone index |
+| `AEROINTEL_RETRIEVAL_MODE` | `dense` (safe default) or `hybrid` |
+| `AEROINTEL_RETRIEVAL_K` | Number of final documents returned |
+| `AEROINTEL_RERANKER_ENABLED` | Enable optional cross-encoder reranking |
+| `REDIS_CACHE_TTL_SECONDS` | Retrieval cache TTL |
+| `AEROINTEL_CACHE_VERSION` | Bump when retrieval output or corpus changes |
 
-Optional settings include `ACCESS_TOKEN_EXPIRE_MINUTES` (default 480),
-`GEMINI_MODEL_PRIMARY`, `GEMINI_MODEL_FALLBACK`, `PINECONE_INDEX_NAME`,
-`PINECONE_CLOUD`, and `PINECONE_REGION`.
+The production API uses Groq via LiteLLM. The Google key is retained for the
+standalone Gemini/LangGraph experiments and evaluation utilities. Do not assume
+a fallback model is active unless it is explicitly configured and tested.
 
-Keep `.env` out of Git, Docker images, logs, and chat. On AWS, supply secrets
-from AWS Secrets Manager or another managed secret store. Do not put API keys,
-JWT signing keys, or database passwords in an image or a source file.
+## Local development
 
-## Run locally with Docker
+1. Install Python 3.11 and Docker Desktop.
+2. Create and activate a virtual environment.
+3. Install dependencies:
 
-1. Ensure Docker Desktop is running.
-2. Create `.env` from `.env.example` if you do not already have one. Set a
-   unique local PostgreSQL password in both `POSTGRES_PASSWORD` and
-   `DATABASE_URL`, a random JWT signing key, and your Google and Pinecone keys.
-3. Build and start the API and local PostgreSQL service:
+   ```bash
+   python -m pip install --upgrade pip
+   pip install -r requirements.txt
+   ```
 
-   ```powershell
+4. Create `.env` from `.env.example`, then set local PostgreSQL credentials,
+   JWT secret, Groq key, Pinecone key, and index name.
+5. Start the API and local database:
+
+   ```bash
    docker compose -f compose.yaml -f compose.local.yaml up -d --build
    ```
 
-   The container applies pending database migrations before starting the API.
-   The API is bound to `127.0.0.1:8000`; it is not exposed to other machines.
-4. Create your account once:
+6. Create an account:
 
-   ```powershell
+   ```bash
    docker compose -f compose.yaml -f compose.local.yaml exec api python create_user.py
    ```
 
-   The password is entered without being echoed and is stored only as an Argon2
-   hash. The command does not print an access token.
-   To reset an existing account from the trusted host, add `--reset-password`
-   to the same command.
-5. Open [http://localhost:8000/docs](http://localhost:8000/docs), select
-   **Authorize**, and enter your email in the username field and your password.
-   Swagger obtains and stores the access token for you. You do not need to
-   generate or paste tokens manually.
-6. Check `GET /health`, then `GET /ready`, then ask a question with `POST /ask`.
+7. Open [http://localhost:8000/docs](http://localhost:8000/docs), authorize
+   using your email and password, and call `POST /ask`.
 
-The initial MCP startup loads the embedding model and connects to Pinecone, so
-the first start can take several minutes. The health check allows for this.
+The first start may take several minutes because the sentence-transformer
+embedding model is downloaded and initialized.
 
-## Knowledge base setup
+## Knowledge base and Pinecone
 
-The API expects a Pinecone index whose name matches `PINECONE_INDEX_NAME` and
-whose vector dimension is 384. The API fails readiness if the index is missing,
-not ready, or has the wrong dimension; it will not silently create an empty
-index. To create and populate the index deliberately, configure Pinecone and
-run:
+The repository includes aviation text documents under `data/aircrafts` and
+`data/airlines`. The embedding model
+`sentence-transformers/all-MiniLM-L6-v2` produces 384-dimensional vectors.
 
-```powershell
+Create/populate the configured index deliberately:
+
+```bash
 python index_v2.py
 ```
 
-This indexes the aviation text files in `data/`. Run indexing as a one-off
-operation, not as part of API startup.
+Do not run indexing as part of API startup. Confirm the Pinecone index name,
+dimension, region, and data population before deploying. Re-index when source
+documents change. Keep source metadata such as `type`, `entity_id`, and
+`source` intact; retrieval filters and evaluation depend on it.
 
-## AWS deployment
+## Retrieval modes and evaluation
 
-The repository is prepared to build a container, but this project does not
-create AWS resources or change security groups automatically. Keep the existing
-RDS instance private. The RDS security group should allow PostgreSQL only from
-the AeroIntel application security group. Do not expose port 5432 or the
-container's port 8000 to the public internet.
+Dense search is the default and preserves current behaviour.
 
-For an EC2 deployment, publish the image to a private ECR repository and run it
-with the production values injected from AWS Secrets Manager. The included
-`compose.yaml` binds port 8000 to loopback, so an administrator can inspect it
-over a restricted SSH tunnel:
+Hybrid mode combines Pinecone dense retrieval with BM25 lexical retrieval,
+then fuses rankings using Reciprocal Rank Fusion. The BM25 corpus is rebuilt
+from the versioned `data/` documents and cached in-process. It does not require
+a new Pinecone index.
 
-```powershell
-ssh -i <private-key-file> -L 8000:127.0.0.1:8000 ec2-user@<instance-address>
+To compare retrieval modes against the existing 20-case evaluation set:
+
+```bash
+python evaluate_retreival.py
+python evaluate_hybrid.py
 ```
 
-Then open `http://localhost:8000/docs` on the administrator's computer. For a
-public application, put an HTTPS load balancer or reverse proxy in front of the
-container. Restrict SSH ingress to administrator IP addresses and allow API
-ingress only through that HTTPS front end. Never broaden security-group access
-to troubleshoot Swagger.
+The hybrid comparison reports Precision@K, Recall@K, MRR, and expected-term
+coverage for K values 3, 5, and 8. The expected entities and terms in the
+evaluation dataset must be reviewed whenever the source corpus changes.
 
-By default, the image runs `alembic upgrade head` before Uvicorn. For a
-multi-instance deployment, run `alembic upgrade head` once as a deployment job,
-then set `RUN_MIGRATIONS=false` on API tasks so instances do not attempt the
-same migration concurrently.
+Optional cross-encoder reranking:
+
+```env
+AEROINTEL_RERANKER_ENABLED=true
+AEROINTEL_RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L-6-v2
+```
+
+Reranking downloads an additional model and increases CPU/RAM use and latency.
+Benchmark it before enabling in production. Hybrid search and reranking remain
+configurable; do not switch production mode based on assumptions.
+
+End-to-end answer evaluation against a running local API:
+
+```bash
+python evaluate_answers.py
+```
+
+The script requires a valid AeroIntel access token and checks expected terms,
+abstention behaviour, and latency. It is a smoke/regression evaluator, not a
+complete semantic faithfulness benchmark.
+
+## Tests and CI
+
+Run unit/API tests:
+
+```bash
+python -m pytest -q
+```
+
+Run the focused retrieval tests:
+
+```bash
+python -m pytest -q test_rag_retrieval.py
+```
+
+The GitHub Actions workflow runs tests, validates Alembic migrations, and
+builds the Docker image. Production deployment is restricted to pushes to
+`main`; pull requests run validation but do not deploy.
+
+## Production deployment
+
+The existing workflow builds a uniquely tagged image, pushes it to private
+ECR, and invokes the EC2 deployment script through Systems Manager. The script
+starts Redis, runs database migrations, starts a candidate container on the
+inactive loopback port, checks `/ready`, validates Caddy, and switches traffic.
+It retains the previous container for rollback.
+
+Before enabling a new release, verify:
+
+- GitHub Actions production environment secrets and AWS permissions.
+- EC2 instance is managed by SSM and has least-privilege ECR pull permissions.
+- Caddy, Docker, AWS CLI, and required host paths exist on EC2.
+- `/etc/aerointel/production.env` contains current, rotated credentials.
+- PostgreSQL is reachable privately from EC2 and migrations are backed up.
+- Pinecone index exists, is ready, dimension is 384, and contains current data.
+- Redis persistence and memory limits are appropriate for the workload.
+- HTTPS/DNS and firewall rules expose only the intended public endpoint.
+- A rollback procedure has been rehearsed.
+
+Never expose database port 5432, Redis port 6379, or application port 8000
+directly to the public internet. Keep production secrets out of GitHub source,
+container images, logs, and chat. Prefer AWS-managed secret storage and a
+restricted instance role.
 
 ## API endpoints
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/health` | Process liveness. |
-| `GET` | `/ready` | Agent, MCP, and database readiness. |
-| `POST` | `/auth/login` | OAuth2 password login used by Swagger. |
-| `GET` | `/auth/me` | Return the authenticated account. |
-| `POST` | `/ask` | Generate and save a grounded answer. Requires login. |
-| `GET` | `/conversations/{session_id}` | Read the signed-in user's conversation history. Requires login. |
+| `GET` | `/health` | Process liveness |
+| `GET` | `/ready` | Agent, MCP, and database readiness |
+| `POST` | `/auth/register` | Create account |
+| `POST` | `/auth/login` | Obtain access token |
+| `GET` | `/auth/me` | Current authenticated account |
+| `POST` | `/ask` | Ask an aviation question |
+| `GET` | `/conversations/{session_id}` | Read own conversation history |
 
-Login tokens expire after eight hours by default. Use Swagger's **Authorize**
-button to sign in again when needed; no developer-token script is included.
+## Known operational boundaries
 
-## Troubleshooting
-
-- `401`: sign in again through Swagger's **Authorize** button.
-- `/ready` returns `503`: check the sanitized container logs for MCP, Pinecone,
-  or database startup failures. `/health` only confirms that the API process is
-  responding.
-- `429`: the Gemini quota or rate limit is exhausted.
-- `503` from `/ask`: an upstream service is unavailable; the configured
-  fallback model is attempted by Google ADK.
-- “Failed to fetch”: confirm the browser is using the same-origin `/docs` page,
-  that `/health` responds, and that the API is reachable through the intended
-  secure route. Swagger and `/ask` do not need permissive CORS middleware when
-  served by the same FastAPI app.
+- Production request orchestration currently uses Google ADK, not LangGraph.
+- The LangGraph workflow is maintained as a separate experimental/evaluation
+  path until it has equivalent behaviour, tests, and a deliberate migration.
+- Hybrid retrieval must be benchmarked against dense retrieval on the actual
+  Pinecone corpus before it is selected as the production default.
+- The answer evaluator checks expected terms and abstention phrases; it does
+  not by itself prove factual correctness or faithfulness.
+- Production readiness still depends on successful CI, real environment
+  validation, security review, backup/restore testing, and a rollback drill.
