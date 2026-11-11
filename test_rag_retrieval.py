@@ -7,7 +7,11 @@ from source.rag_metrics import (
     recall_at_k,
     reciprocal_rank,
 )
-from source.hybrid_search import reciprocal_rank_fusion, tokenize
+from source.hybrid_search import (
+    hybrid_retrieve,
+    reciprocal_rank_fusion,
+    tokenize,
+)
 
 
 def test_precision_at_k():
@@ -46,6 +50,51 @@ def test_tokenize_normalizes_punctuation():
     assert tokenize("A350-1000: Trent XWB-97!") == [
         "a350", "1000", "trent", "xwb", "97"
     ]
+
+
+def test_hybrid_retrieve_combines_dense_and_sparse_candidates(monkeypatch):
+    import source.hybrid_search as module
+
+    dense = Document(
+        page_content="dense candidate",
+        metadata={"source": "dense.txt", "type": "aircraft"},
+    )
+    sparse = Document(
+        page_content="A350-1000 aircraft range",
+        metadata={"source": "sparse.txt", "type": "aircraft"},
+    )
+
+    class FakeBM25:
+        def get_scores(self, tokens):
+            return [2.0]
+
+    class FakeStore:
+        def similarity_search(self, query, **kwargs):
+            assert kwargs["filter"] == {"type": "aircraft"}
+            return [dense]
+
+    monkeypatch.setattr(
+        module, "_sparse_index", lambda path: ([sparse], FakeBM25())
+    )
+    monkeypatch.setattr(
+        module, "_rerank", lambda query, docs, top_k: docs[:top_k]
+    )
+
+    result = hybrid_retrieve(
+        "A350-1000 range",
+        FakeStore(),
+        k=2,
+        entity_type="aircraft",
+    )
+
+    assert {doc.page_content for doc in result} == {
+        "dense candidate", "A350-1000 aircraft range"
+    }
+
+
+def test_hybrid_rejects_invalid_k():
+    with pytest.raises(ValueError):
+        hybrid_retrieve("aircraft", object(), k=4, candidate_k=3)
 
 
 def test_invalid_metric_k_is_rejected():
